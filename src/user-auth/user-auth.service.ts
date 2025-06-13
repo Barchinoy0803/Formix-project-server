@@ -1,12 +1,11 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserAuthDto } from './dto/create-user-auth.dto';
-import { UpdateUserAuthDto } from './dto/update-user-auth.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginUserAuthDto } from './dto/login-user-auth.dto';
 import * as bcrypt from "bcrypt"
 import { MailService } from 'src/mail/mail.service';
-import { USER_STATUS } from 'generated/prisma';
 import { JwtService } from '@nestjs/jwt';
+import { USER_STATUS } from '@prisma/client';
 
 @Injectable()
 export class UserAuthService {
