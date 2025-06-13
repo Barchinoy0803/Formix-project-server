@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String           @id @default(uuid())
+  username       String
+  email          String           @unique
+  password       String
+  role           ROLE             @default(USER)
+  status         USER_STATUS      @default(INACTIVE)
+  Template       Template[]
+  Answer         Answer[]
+  Comment        Comment[]
+  Likes          Likes[]
+  Form           Form[]
+  TemplateAccess TemplateAccess[]
+}
+
+model Template {
+  id             String           @id @default(uuid())
+  topic          String
+  description    String
+  image          String?
+  type           FORM_TYPE
+  userId         String
+  user           User             @relation(fields: [userId], references: [id])
+  Tags           Tags[]
+  Question       Question[]
+  Comment        Comment[]
+  Likes          Likes[]
+  Form           Form[]
+  TemplateAccess TemplateAccess[]
+}
+
+model TemplateAccess {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+}
+
+model Form {
+  id         String   @id @default(uuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  Answer     Answer[]
+  createdAt  DateTime @default(now())
+}
+
+model Tags {
+  id         String   @id @default(uuid())
+  name       String
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+}
+
+model Question {
+  id          String               @id @default(uuid())
+  sequence    Int
+  title       String
+  description String
+  type        QUESTION_ANSWER_TYPE
+  isPublished Boolean
+  templateId  String
+  template    Template             @relation(fields: [templateId], references: [id])
+  Answer      Answer[]
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  sequence   Int
+  answer     String
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  formId     String
+  form       Form     @relation(fields: [formId], references: [id])
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  context    String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+}
+
+model Likes {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+}
+
+enum ROLE {
+  ADMIN
+  USER
+}
+
+enum FORM_TYPE {
+  PUBLIC
+  PRIVATE
+}
+
+enum QUESTION_ANSWER_TYPE {
+  OPEN
+  MULTI_CHOOISE
+  CLOSE
+  NUMERICAL
+}
+
+enum USER_STATUS {
+  ACTIVE
+  INACTIVE
+}
