@@ -11,14 +11,17 @@ export class SelfGuard implements CanActivate {
     async canActivate(context: ExecutionContext) {
         const req = context.switchToHttp().getRequest();
 
-        const userId = req.params.id
-        const ownerId = req['user'].id
+        const userIds = req.body.ids;
+        const ownerId = req['user'].id;
 
-        if (!userId || !ownerId) return false
+        if (!userIds || !ownerId) return false;
 
-        if (userId === ownerId) return true
-        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+        const idArray = typeof userIds === 'string' ? userIds.split(',') : userIds;
 
-        return req['user'].role === ROLE.ADMIN
+        const isSelf = idArray.every((id: string) => id === ownerId);
+        if (isSelf) return true;
+
+        return req['user'].role === ROLE.ADMIN;
     }
+
 }

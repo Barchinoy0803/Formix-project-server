@@ -40,6 +40,8 @@ export class UserService {
 
   async remove(ids: string[]) {
     try {
+      console.log(1);
+      
       if (!ids || ids.length === 0) {
         throw new Error('No user IDs provided');
       }
