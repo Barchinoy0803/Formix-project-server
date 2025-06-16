@@ -20,6 +20,7 @@ model User {
   Likes          Likes[]
   Form           Form[]
   TemplateAccess TemplateAccess[]
+  createdAt      DateTime         @default(now())
 }
 
 model Template {
@@ -124,4 +125,5 @@ enum QUESTION_ANSWER_TYPE {
 enum USER_STATUS {
   ACTIVE
   INACTIVE
+  BLOCKED 
 }

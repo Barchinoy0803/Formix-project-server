@@ -4,7 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { RoleGuard } from 'src/guards/role.guard';
 import { Roles } from 'src/decorators/roles.decorators';
-import { ROLE } from '@prisma/client';
+import { ROLE, USER_STATUS } from '@prisma/client';
 import { SelfGuard } from 'src/guards/self.guard';
 
 @Controller('user')
@@ -26,10 +26,18 @@ export class UserController {
 
   @Roles(ROLE.ADMIN)
   @UseGuards(AuthGuard, RoleGuard)
+  @Patch('update-role')
+  async updateUserStatusRole(@Body() body: { ids: string | string[], role: ROLE }) {
+    const idArray = typeof body.ids === 'string' ? body.ids.split(',') : body.ids;
+    return this.userService.updateUserRole(idArray, body.role);
+  }
+
+  @Roles(ROLE.ADMIN)
+  @UseGuards(AuthGuard, RoleGuard)
   @Patch('update-status')
-  async updateUserStatus(@Body('ids') ids: string | string[], @Body('role') role: ROLE) {
-    const idArray = typeof ids === 'string' ? ids.split(',') : ids;
-    return this.userService.updateUserRole(idArray, role);
+  async updateUserStatusStatus(@Body() body: { ids: string | string[], status: USER_STATUS }) {
+    const idArray = typeof body.ids === 'string' ? body.ids.split(',') : body.ids;
+    return this.userService.updateUserStatus(idArray, body.status);
   }
 
   @UseGuards(AuthGuard, SelfGuard)

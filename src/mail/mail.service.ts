@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
 import { totp } from 'otplib';
 
@@ -11,12 +11,12 @@ export class MailService {
   }
 
   async sendOtp(email: string) {
-    const secretKey = process.env.OTP_SECRET
+    const secretKey = process.env.OTP_SECRET;
+    if (!secretKey) {
+      throw new InternalServerErrorException('OTP secret key is not configured.');
+    }
     try {
-      let otp
-      if (secretKey) {
-        otp = totp.generate(secretKey)
-      }
+      let otp = totp.generate(secretKey)
       await this.mailServise.sendMail({
         to: email,
         subject: "OTP verification",
@@ -24,20 +24,22 @@ export class MailService {
       })
       return { message: "Otp send successfully✅" }
     } catch (error) {
-      console.log(error);
+      console.error("Error sending OTP:", error);
+      throw new InternalServerErrorException('Failed to send OTP email.'); 
     }
   }
 
-  async verifyOtp(otp: string) {
-    try {
-      const secretKey = process.env.OTP_SECRET
-      const isValid = totp.check(otp, secretKey!)
-      if (!isValid) {
-        return { message: "Invalid otp" }
-      }
-      return { message: "Your otp is successfully verified✅" }
-    } catch (error) {
-      console.log(error);
+  async verifyOtp(otp: string): Promise<{ message: string }> {
+    const secretKey = process.env.OTP_SECRET;
+    if (!secretKey) {
+      throw new InternalServerErrorException('OTP secret key is not configured.');
     }
+    const isValid = totp.check(otp, secretKey);
+
+    if (!isValid) {
+      throw new BadRequestException("Invalid otp");
+    }
+
+    return { message: "Your otp is successfully verified✅" };
   }
 }

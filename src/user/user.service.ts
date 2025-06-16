@@ -41,7 +41,7 @@ export class UserService {
   async remove(ids: string[]) {
     try {
       console.log(1);
-      
+
       if (!ids || ids.length === 0) {
         throw new Error('No user IDs provided');
       }
@@ -66,6 +66,7 @@ export class UserService {
 
   async updateUserRole(ids: string[], role: ROLE) {
     try {
+
       if (!ids || ids.length === 0) {
         throw new Error('User ID list is required');
       }
@@ -80,7 +81,29 @@ export class UserService {
           role
         }
       })
+      return {
+        message: `${updated.count} users updated successfully`
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
 
+  async updateUserStatus(ids: string[], status: USER_STATUS) {
+    try {
+      if (!ids || ids.length === 0) {
+        throw new Error('User ID list is required');
+      }
+      let updated = await this.prisma.user.updateMany({
+        where: {
+          id: {
+            in: ids
+          },
+        },
+        data: {
+          status
+        }
+      })
       return {
         message: `${updated.count} users updated successfully`
       }

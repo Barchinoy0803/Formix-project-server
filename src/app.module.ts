@@ -8,9 +8,20 @@ import { AnswerModule } from './answer/answer.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserAuthModule } from './user-auth/user-auth.module';
 import { MailModule } from './mail/mail.module';
+import { TemplateModule } from './template/template.module';
+import { FileUploadModule } from './file-upload/file-upload.module';
+import { CloudinaryModule } from 'nestjs-cloudinary';
 
 @Module({
-  imports: [UserModule, FormModule, QuestionModule, AnswerModule, PrismaModule, UserAuthModule, MailModule],
+  imports: [UserModule, FormModule, QuestionModule, AnswerModule, PrismaModule, UserAuthModule, MailModule, TemplateModule, FileUploadModule,
+      CloudinaryModule.forRootAsync({
+      useFactory: () => ({
+        cloud_name: process.env.CLOUD_NAME,
+        api_key: process.env.API_KEY,
+        api_secret: process.env.API_SECRET,
+      }),
+    }),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
