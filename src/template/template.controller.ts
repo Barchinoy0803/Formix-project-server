@@ -5,10 +5,12 @@ import { UpdateTemplateDto } from './dto/update-template.dto';
 import { Request } from 'express';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { SelfGuard } from 'src/guards/self.guard';
+import { OwnerGuard } from 'src/guards/owner.guard';
+import { OwnerEntity } from 'src/decorators/owner-entity.decorator';
 
 @Controller('template')
 export class TemplateController {
-  constructor(private readonly templateService: TemplateService) {}
+  constructor(private readonly templateService: TemplateService) { }
 
   @UseGuards(AuthGuard)
   @Post()
@@ -21,20 +23,29 @@ export class TemplateController {
     return this.templateService.findAll();
   }
 
+  @UseGuards(AuthGuard)
+  @Get('owner')
+  findAllUserTemplates(@Req() req: Request) {
+    return this.templateService.findAllUserTemplates(req);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.templateService.findOne(id);
   }
 
-  @UseGuards(AuthGuard, SelfGuard)
+  @UseGuards(AuthGuard, OwnerGuard)
+  @OwnerEntity('template')
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateTemplateDto: UpdateTemplateDto) {
     return this.templateService.update(id, updateTemplateDto);
   }
 
-  @UseGuards(AuthGuard, SelfGuard)
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.templateService.remove(id);
+  @UseGuards(AuthGuard, OwnerGuard)
+  @OwnerEntity('template')
+  @Delete()
+  remove(@Body('ids') ids: string | string[]) {
+    const idArray = typeof ids === 'string' ? ids.split(',') : ids;
+    return this.templateService.remove(idArray);
   }
 }

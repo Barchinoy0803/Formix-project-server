@@ -25,7 +25,7 @@ export class AuthGuard implements CanActivate {
 
       const user = await this.prisma.user.findUnique({ where: { id: data.id } })
 
-      if(user?.status === USER_STATUS.BLOCKED || user?.role === ROLE.USER){
+      if(user?.status === USER_STATUS.BLOCKED){
         throw new ForbiddenException('User is blocked');
       }
 
