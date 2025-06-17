@@ -1,7 +1,11 @@
 import { FORM_TYPE } from "@prisma/client"
-import { IsEnum, IsNotEmpty, IsString } from "class-validator"
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator"
 
 export class CreateTemplateDto {
+    @IsString()
+    @IsNotEmpty()
+    title: string
+
     @IsString()
     @IsNotEmpty()
     topic: string
@@ -11,7 +15,7 @@ export class CreateTemplateDto {
     description: string
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     image: string
 
     @IsEnum(FORM_TYPE)
