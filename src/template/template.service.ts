@@ -49,7 +49,10 @@ export class TemplateService {
 
   async findOne(id: string) {
     try {
-      let template = await this.prisma.template.findUnique({ where: { id } })
+      let template = await this.prisma.template.findUnique({
+        where: { id },
+        include: { Question: true }
+      })
       if (!template) {
         throw new NotFoundException("Not found")
       }
@@ -74,7 +77,7 @@ export class TemplateService {
   async remove(ids: string[]) {
     try {
       if (!ids || ids.length === 0) {
-        throw new Error('No user IDs provided');
+        throw new Error('No template IDs provided');
       }
 
       const existingTemplates = await this.prisma.template.findMany({
@@ -82,7 +85,7 @@ export class TemplateService {
       });
 
       if (existingTemplates.length === 0) {
-        throw new NotFoundException('No matching users found to delete');
+        throw new NotFoundException('No matching templates found to delete');
       }
 
       const deleted = await this.prisma.template.deleteMany({
@@ -90,7 +93,7 @@ export class TemplateService {
       });
 
       if (deleted.count > 0) {
-        return { message: `${deleted.count} user(s) successfully deleted!` };
+        return { message: `${deleted.count} template(s) successfully deleted!` };
       }
     } catch (error) {
       console.log(error);

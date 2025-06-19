@@ -11,6 +11,7 @@ import { MailModule } from './mail/mail.module';
 import { TemplateModule } from './template/template.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { CloudinaryModule } from 'nestjs-cloudinary';
+import { OptionsModule } from './options/options.module';
 
 @Module({
   imports: [UserModule, FormModule, QuestionModule, AnswerModule, PrismaModule, UserAuthModule, MailModule, TemplateModule, FileUploadModule,
@@ -21,6 +22,7 @@ import { CloudinaryModule } from 'nestjs-cloudinary';
         api_secret: process.env.API_SECRET,
       }),
     }),
+      OptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

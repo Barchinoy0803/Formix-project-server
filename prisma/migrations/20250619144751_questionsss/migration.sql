@@ -1,0 +1,14 @@
+/*
+  Warnings:
+
+  - The values [MULTI_CHOOISE] on the enum `QUESTION_ANSWER_TYPE` will be removed. If these variants are still used in the database, this will fail.
+
+*/
+-- AlterEnum
+BEGIN;
+CREATE TYPE "QUESTION_ANSWER_TYPE_new" AS ENUM ('OPEN', 'MULTICHOICE', 'CLOSE', 'NUMERICAL');
+ALTER TABLE "Question" ALTER COLUMN "type" TYPE "QUESTION_ANSWER_TYPE_new" USING ("type"::text::"QUESTION_ANSWER_TYPE_new");
+ALTER TYPE "QUESTION_ANSWER_TYPE" RENAME TO "QUESTION_ANSWER_TYPE_old";
+ALTER TYPE "QUESTION_ANSWER_TYPE_new" RENAME TO "QUESTION_ANSWER_TYPE";
+DROP TYPE "QUESTION_ANSWER_TYPE_old";
+COMMIT;
