@@ -51,7 +51,11 @@ export class TemplateService {
     try {
       let template = await this.prisma.template.findUnique({
         where: { id },
-        include: { Question: true }
+        include: {
+          Question: {
+            include: { Options: true }
+          },
+        }
       })
       if (!template) {
         throw new NotFoundException("Not found")
