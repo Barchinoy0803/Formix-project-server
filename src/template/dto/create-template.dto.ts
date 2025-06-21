@@ -8,7 +8,7 @@ import {
   IsArray
 } from "class-validator"
 import { Type } from "class-transformer"
-import { CreateQuestionDto } from "../../question/dto/create-question.dto" // adjust path if needed
+import { CreateQuestionDto } from "../../question/dto/create-question.dto"
 
 export class CreateTemplateDto {
   @IsString()

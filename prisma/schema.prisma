@@ -53,8 +53,8 @@ model Form {
   id         String   @id @default(uuid())
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
   Answer     Answer[]
   createdAt  DateTime @default(now())
 }
@@ -82,38 +82,52 @@ model Question {
 }
 
 model Answer {
-  id         String   @id @default(uuid())
-  sequence   Int
-  answer     String
-  questionId String
-  question   Question @relation(fields: [questionId], references: [id])
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  formId     String
-  form       Form     @relation(fields: [formId], references: [id])
+  id                     String                   @id @default(uuid())
+  sequence               Int
+  answer                 String
+  questionId             String
+  question               Question                 @relation(fields: [questionId], references: [id])
+  userId                 String?
+  user                   User?                    @relation(fields: [userId], references: [id])
+  formId                 String
+  form                   Form                     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  selectedOptions        Options[]                @relation("AnswerOptions")
+  SelectedOptionOnAnswer SelectedOptionOnAnswer[]
 }
 
 model Options {
-  id         String   @id @default(uuid())
-  questionId String
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  title      String
-  isSelected Boolean
+  id                     String                   @id @default(uuid())
+  questionId             String
+  question               Question                 @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers                Answer[]                 @relation("AnswerOptions")
+  title                  String
+  SelectedOptionOnAnswer SelectedOptionOnAnswer[]
+}
+
+model SelectedOptionOnAnswer {
+  answerId   String
+  optionId   String
+  isSelected Boolean @default(false)
+
+  answer Answer  @relation(fields: [answerId], references: [id])
+  option Options @relation(fields: [optionId], references: [id])
+
+  @@id([answerId, optionId])
 }
 
 model Comment {
   id         String   @id @default(uuid())
   context    String
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
 }
 
 model Likes {
   id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
 }

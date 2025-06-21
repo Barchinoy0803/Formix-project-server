@@ -1,4 +1,19 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateAnswerDto } from './create-answer.dto';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
-export class UpdateAnswerDto extends PartialType(CreateAnswerDto) {}
+export class UpdateAnswerDto {
+  @IsString()
+  @IsOptional() 
+  id?: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  sequence: number;
+
+  @IsString()
+  @IsNotEmpty()
+  answer: string;
+
+  @IsString()
+  @IsNotEmpty()
+  questionId: string;
+}

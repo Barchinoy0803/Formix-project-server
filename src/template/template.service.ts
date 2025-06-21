@@ -154,7 +154,6 @@ export class TemplateService {
               }
             })) ?? []
           }
-
         },
         include: {
           Question: { include: { Options: true } }
