@@ -33,6 +33,7 @@ export class CreateQuestionDto {
     @IsBoolean()
     isPublished: boolean;
 
+    @IsOptional()
     @IsString()
     templateId: string;
 

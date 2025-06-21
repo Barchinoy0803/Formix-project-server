@@ -20,33 +20,37 @@ export class TemplateService {
         data: {
           ...templateData,
           userId,
-          Question: {
-            create: Question?.map((q) => ({
-              title: q.title,
-              sequence: q.sequence,
-              description: q.description ?? "",
-              type: q.type,
-              isPublished: q.isPublished,
-              createdById: userId,
-              Options: {
-                create: q.Options?.map((o) => ({
-                  title: o.title,
-                  isSelected: o.isSelected ?? false
-                })) ?? []
-              }
-            }))
-          }
+          ...(Question?.length
+            ? {
+              Question: {
+                create: Question.map((q) => ({
+                  title: q.title,
+                  sequence: q.sequence,
+                  description: q.description ?? '',
+                  type: q.type,
+                  isPublished: q.isPublished,
+                  createdById: userId,
+                  Options: {
+                    create: q.Options?.map((o) => ({
+                      title: o.title,
+                      isSelected: o.isSelected ?? false,
+                    })) ?? [],
+                  },
+                })),
+              },
+            }
+            : {}),
         },
         include: {
           Question: {
-            include: { Options: true }
-          }
-        }
+            include: { Options: true },
+          },
+        },
       });
 
       return template;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw new HttpException('Template creation failed', HttpStatus.BAD_REQUEST);
     }
   }
@@ -126,34 +130,31 @@ export class TemplateService {
           type: updateTemplateDto.type,
 
           Question: {
-            ...(existingQuestions?.length && {
-              update: existingQuestions.map(q => ({
-                where: { id: q.id },
-                data: {
-                  title: q.title,
-                  sequence: q.sequence,
-                  description: q.description ?? '',
-                  type: q.type,
-                  isPublished: q.isPublished,
-                }
-              }))
-            }),
-            ...(newQuestions?.length && {
-              create: newQuestions.map(q => ({
+            update: existingQuestions?.map(q => ({
+              where: { id: q.id },
+              data: {
                 title: q.title,
                 sequence: q.sequence,
                 description: q.description ?? '',
                 type: q.type,
                 isPublished: q.isPublished,
-                Options: {
-                  create: q.Options?.map(o => ({
-                    title: o.title,
-                    isSelected: o.isSelected ?? false
-                  })) ?? []
-                }
-              }))
-            })
+              }
+            })) ?? [],
+            create: newQuestions?.map(q => ({
+              title: q.title,
+              sequence: q.sequence,
+              description: q.description ?? '',
+              type: q.type,
+              isPublished: q.isPublished,
+              Options: {
+                create: q.Options?.map(o => ({
+                  title: o.title,
+                  isSelected: o.isSelected ?? false
+                })) ?? []
+              }
+            })) ?? []
           }
+
         },
         include: {
           Question: { include: { Options: true } }
@@ -169,30 +170,38 @@ export class TemplateService {
 
 
 
-  async remove(ids: string[]) {
+  async remove(templateIds: string[]) {
     try {
-      if (!ids || ids.length === 0) {
-        throw new Error('No template IDs provided');
-      }
-
-      const existingTemplates = await this.prisma.template.findMany({
-        where: { id: { in: ids } }
+      await this.prisma.options.deleteMany({
+        where: {
+          question: {
+            templateId: {
+              in: templateIds,
+            },
+          },
+        },
       });
 
-      if (existingTemplates.length === 0) {
-        throw new NotFoundException('No matching templates found to delete');
-      }
+      await this.prisma.question.deleteMany({
+        where: {
+          templateId: {
+            in: templateIds,
+          },
+        },
+      });
 
       const deleted = await this.prisma.template.deleteMany({
-        where: { id: { in: ids } }
+        where: {
+          id: { in: templateIds },
+        },
       });
 
-      if (deleted.count > 0) {
-        return { message: `${deleted.count} template(s) successfully deleted!` };
-      }
+      return deleted;
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      throw new HttpException('Failed to delete templates', HttpStatus.BAD_REQUEST);
     }
   }
+
 
 }
