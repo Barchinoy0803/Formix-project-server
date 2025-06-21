@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, ValidateNested, IsBoolean, IsArray, IsNumber, IsInt } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, ValidateNested, IsBoolean, IsArray, IsNumber, IsInt, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { QUESTION_ANSWER_TYPE } from '@prisma/client';
 
@@ -11,6 +11,10 @@ class CreateOptionDto {
 }
 
 export class CreateQuestionDto {
+    @IsUUID()
+    @IsOptional()
+    id: string;
+
     @IsInt()
     @IsNotEmpty()
     sequence: number
@@ -33,8 +37,12 @@ export class CreateQuestionDto {
     templateId: string;
 
     @IsOptional()
+    @IsString()
+    createdById?: string
+
+    @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => CreateOptionDto)
-    options?: CreateOptionDto[];
+    Options?: CreateOptionDto[];
 }

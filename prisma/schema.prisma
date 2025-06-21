@@ -96,7 +96,7 @@ model Answer {
 model Options {
   id         String   @id @default(uuid())
   questionId String
-  question   Question @relation(fields: [questionId], references: [id])
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   title      String
   isSelected Boolean
 }

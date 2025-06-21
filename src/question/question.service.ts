@@ -11,44 +11,44 @@ export class QuestionService {
     private readonly prisma: PrismaService
   ) { }
 
-async create(createQuestionDtos: CreateQuestionDto[], req: Request) {
-  try {
-    const createdById = req['user'].id;
+  async create(createQuestionDtos: CreateQuestionDto[], req: Request) {
+    try {
+      const createdById = req['user'].id;
 
-    const createdQuestions = await Promise.all(
-      createQuestionDtos.map(async (dto) => {
-        const { options, ...questionData } = dto;
+      const createdQuestions = await Promise.all(
+        createQuestionDtos.map(async (dto) => {
+          const { Options, ...questionData } = dto;
 
-        const question = await this.prisma.question.create({
-          data: {
-            ...questionData,
-            description: dto.description ?? '',
-            createdById,
-            sequence: dto.sequence,
-            Options: options?.length
-              ? {
-                  create: options.map((opt) => ({
+          const question = await this.prisma.question.create({
+            data: {
+              ...questionData,
+              description: dto.description ?? '',
+              createdById,
+              sequence: dto.sequence,
+              Options: Options?.length
+                ? {
+                  create: Options.map((opt) => ({
                     title: opt.title,
                     isSelected: opt.isSelected ?? false,
                   })),
                 }
-              : undefined,
-          },
-          include: {
-            Options: true,
-          },
-        });
+                : undefined,
+            },
+            include: {
+              Options: true,
+            },
+          });
 
-        return question;
-      })
-    );
+          return question;
+        })
+      );
 
-    return createdQuestions;
-  } catch (error) {
-    console.error(error);
-    throw new HttpException('Failed to create questions', HttpStatus.INTERNAL_SERVER_ERROR);
+      return createdQuestions;
+    } catch (error) {
+      console.error(error);
+      throw new HttpException('Failed to create questions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
-}
 
 
   async findAll(currentUser?: { id: string, role: ROLE }) {
@@ -96,15 +96,38 @@ async create(createQuestionDtos: CreateQuestionDto[], req: Request) {
 
   async update(id: string, updateQuestionDto: UpdateQuestionDto) {
     try {
-      let updated = await this.prisma.question.update({
-        data: updateQuestionDto,
-        where: { id }
-      })
-      return updated
+      const {
+        Options,
+        ...rest
+      } = updateQuestionDto;
+
+      const updated = await this.prisma.question.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(Options && {
+            Options: {
+              deleteMany: {}, 
+              create: Options.map((o) => ({
+                title: o.title,
+                isSelected: o.isSelected ?? false
+              }))
+            }
+          })
+        },
+        include: {
+          Options: true
+        }
+      });
+
+      return updated;
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      throw new Error("Update failed");
     }
   }
+
+
 
   async remove(ids: string[]) {
     try {
