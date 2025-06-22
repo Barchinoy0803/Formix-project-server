@@ -143,7 +143,7 @@ export class FormService {
 
   async update(id: string, updateFormDto: UpdateFormDto, req: Request) {
     try {
-      const userId = req['user'].id;
+      const userId = req['user'].id
 
       const existingForm = await this.prisma.form.findUnique({
         where: { id },
