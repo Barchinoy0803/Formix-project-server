@@ -162,11 +162,12 @@ export class FormService {
       const toUpdate = incoming.filter((a) => a.id);
       const toCreate = incoming.filter((a) => !a.id);
 
-      await this.prisma.selectedOptionOnAnswer.deleteMany({
-        where: {
-          answerId: { in: idsToDelete },
-        },
-      });
+      if (idsToDelete.length > 0) {
+        await this.prisma.$executeRaw`
+          DELETE FROM "SelectedOptionOnAnswer" 
+          WHERE "answerId" IN (${idsToDelete.map(id => `'${id}'`).join(',')})
+        `;
+      }
 
       await this.prisma.answer.deleteMany({
         where: { id: { in: idsToDelete } },
@@ -229,11 +230,12 @@ export class FormService {
 
       const answerIds = answers.map((a) => a.id);
 
-      await this.prisma.selectedOptionOnAnswer.deleteMany({
-        where: {
-          answerId: { in: answerIds },
-        },
-      });
+      if (answerIds.length > 0) {
+        await this.prisma.$executeRaw`
+          DELETE FROM "SelectedOptionOnAnswer" 
+          WHERE "answerId" IN (${answerIds.map(id => `'${id}'`).join(',')})
+        `;
+      }
 
       await this.prisma.answer.deleteMany({
         where: {
