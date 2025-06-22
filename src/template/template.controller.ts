@@ -3,10 +3,9 @@ import { TemplateService } from './template.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { Request } from 'express';
-import { AuthGuard } from 'src/guards/auth.guard';
-import { SelfGuard } from 'src/guards/self.guard';
-import { OwnerGuard } from 'src/guards/owner.guard';
-import { OwnerEntity } from 'src/decorators/owner-entity.decorator';
+import { AuthGuard } from '../guards/auth.guard';
+import { OwnerGuard } from '../guards/owner.guard';
+import { OwnerEntity } from '../decorators/owner-entity.decorator';
 
 @Controller('template')
 export class TemplateController {

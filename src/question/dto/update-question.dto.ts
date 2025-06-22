@@ -1,7 +1,7 @@
 import { QUESTION_ANSWER_TYPE } from "@prisma/client";
 import { Type } from "class-transformer";
 import { IsBoolean, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
-import { CreateOptionDto } from "src/options/dto/create-option.dto";
+import { CreateOptionDto } from "../../options/dto/create-option.dto";
 
 export class UpdateQuestionDto {
   @IsOptional()

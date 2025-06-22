@@ -1,11 +1,11 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AuthGuard } from 'src/guards/auth.guard';
-import { RoleGuard } from 'src/guards/role.guard';
-import { Roles } from 'src/decorators/roles.decorators';
+import { AuthGuard } from '../guards/auth.guard';
+import { RoleGuard } from '../guards/role.guard';
+import { Roles } from '../decorators/roles.decorators';
 import { ROLE, USER_STATUS } from '@prisma/client';
-import { SelfGuard } from 'src/guards/self.guard';
+import { SelfGuard } from '../guards/self.guard';
 
 @Controller('user')
 export class UserController {

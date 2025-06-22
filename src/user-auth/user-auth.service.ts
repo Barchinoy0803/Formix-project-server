@@ -1,6 +1,6 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserAuthDto } from './dto/create-user-auth.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { LoginUserAuthDto } from './dto/login-user-auth.dto';
 import * as bcrypt from "bcrypt"
 import { MailService } from 'src/mail/mail.service';

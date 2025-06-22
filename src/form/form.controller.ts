@@ -3,9 +3,9 @@ import { FormService } from './form.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { Request } from 'express';
-import { OwnerEntity } from 'src/decorators/owner-entity.decorator';
-import { OwnerGuard } from 'src/guards/owner.guard';
-import { AuthGuard } from 'src/guards/auth.guard';
+import { OwnerEntity } from '../decorators/owner-entity.decorator';
+import { OwnerGuard } from '../guards/owner.guard';
+import { AuthGuard } from '../guards/auth.guard';
 
 @Controller('form')
 export class FormController {

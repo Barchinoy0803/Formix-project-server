@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { OptionsService } from './options.service';
 import { CreateOptionDto } from './dto/create-option.dto';
-import { AuthGuard } from 'src/guards/auth.guard';
-import { OwnerGuard } from 'src/guards/owner.guard';
-import { OwnerEntity } from 'src/decorators/owner-entity.decorator';
+import { AuthGuard } from '../guards/auth.guard';
+import { OwnerGuard } from '../guards/owner.guard';
+import { OwnerEntity } from '../decorators/owner-entity.decorator';
 
 @Controller('options')
 export class OptionsController {

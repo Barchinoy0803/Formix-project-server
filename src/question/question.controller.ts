@@ -2,9 +2,9 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } fro
 import { QuestionService } from './question.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
-import { AuthGuard } from 'src/guards/auth.guard';
-import { OwnerGuard } from 'src/guards/owner.guard';
-import { OwnerEntity } from 'src/decorators/owner-entity.decorator';
+import { AuthGuard } from '../guards/auth.guard';
+import { OwnerGuard } from '../guards/owner.guard';
+import { OwnerEntity } from '../decorators/owner-entity.decorator';
 import { Request } from 'express';
 import * as jwt from 'jsonwebtoken';
 
