@@ -42,8 +42,8 @@ export class FormController {
   @UseGuards(AuthGuard, OwnerGuard)
   @OwnerEntity('form')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateFormDto: UpdateFormDto) {
-    return this.formService.update(id, updateFormDto);
+  update(@Param('id') id: string, @Body() updateFormDto: UpdateFormDto, @Req() req: Request) {
+    return this.formService.update(id, updateFormDto, req);
   }
 
   @UseGuards(AuthGuard, OwnerGuard)

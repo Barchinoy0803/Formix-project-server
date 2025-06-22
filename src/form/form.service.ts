@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { Request } from 'express';
@@ -6,9 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class FormService {
-  constructor(
-    private readonly prisma: PrismaService
-  ) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createFormDto: CreateFormDto, req: Request) {
     try {
@@ -21,37 +25,36 @@ export class FormService {
           userId,
           ...(Answer?.length
             ? {
-              Answer: {
-                create: Answer.map((a) => {
-                  const isMultiChoice = Array.isArray(a.answer);
-
-                  return {
-                    userId,
-                    sequence: a.sequence,
-                    questionId: a.questionId,
-                    answer: isMultiChoice ? 'MULTI' : String(a.answer),
-                    ...(isMultiChoice
-                      ? {
-                        SelectedOptionOnAnswer: {
-                          create: (a.answer as string[]).map((optionId) => ({
-                            option: {
-                              connect: { id: optionId },
+                Answer: {
+                  create: Answer.map((a) => {
+                    const isMultiChoice = Array.isArray(a.answer);
+                    return {
+                      userId,
+                      sequence: a.sequence,
+                      questionId: a.questionId,
+                      answer: isMultiChoice ? 'MULTI' : String(a.answer),
+                      ...(isMultiChoice
+                        ? {
+                            selectedOptionOnAnswer: {
+                              create: (a.answer as string[]).map((optionId) => ({
+                                option: {
+                                  connect: { id: optionId },
+                                },
+                                isSelected: true,
+                              })),
                             },
-                            isSelected: true,
-                          })),
-                        },
-                      }
-                      : {}),
-                  };
-                }),
-              },
-            }
+                          }
+                        : {}),
+                    };
+                  }),
+                },
+              }
             : {}),
         },
         include: {
           Answer: {
             include: {
-              SelectedOptionOnAnswer: {
+              selectedOptionOnAnswer: {
                 include: {
                   option: true,
                 },
@@ -70,65 +73,78 @@ export class FormService {
 
   async findAll() {
     try {
-      let forms = await this.prisma.form.findMany({
+      const forms = await this.prisma.form.findMany({
         include: {
-          template: true
-        }
-      })
-      return forms
+          template: true,
+        },
+      });
+      return forms;
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
   async findAllUserForms(req: Request) {
     try {
-      const userId = req['user'].id
-      let forms = await this.prisma.form.findMany({
+      const userId = req['user'].id;
+      const forms = await this.prisma.form.findMany({
         where: { userId },
         include: {
-          template: true
-        }
-      })
-      return forms
+          template: true,
+        },
+      });
+      return forms;
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
   async findForms(req: Request) {
     try {
-      const userId = req['user'].id
-      let forms = await this.prisma.form.findMany({
+      const userId = req['user'].id;
+      const forms = await this.prisma.form.findMany({
         where: {
-          template: { userId }
+          template: { userId },
         },
         include: {
-          template: true
-        }
-      })
-      return forms
+          template: true,
+        },
+      });
+      return forms;
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
   async findOne(id: string) {
     try {
-      let form = await this.prisma.form.findUnique({
+      const form = await this.prisma.form.findUnique({
         where: { id },
-        include: { Answer: true }
-      })
-      if (!form) return new HttpException("Not found this user", HttpStatus.NOT_FOUND)
-      return form
+        include: {
+          Answer: {
+            include: {
+              selectedOptionOnAnswer: {
+                include: { option: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!form) {
+        throw new HttpException('Not found this form', HttpStatus.NOT_FOUND);
+      }
+
+      return form;
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
-
-  async update(id: string, updateFormDto: UpdateFormDto) {
+  async update(id: string, updateFormDto: UpdateFormDto, req: Request) {
     try {
+      const userId = req['user'].id;
+
       const existingForm = await this.prisma.form.findUnique({
         where: { id },
         include: { Answer: true },
@@ -138,35 +154,44 @@ export class FormService {
         throw new NotFoundException('Form not found');
       }
 
-      const existingIds = existingForm.Answer.map(a => a.id);
+      const existingIds = existingForm.Answer.map((a) => a.id);
       const incoming = updateFormDto.Answer || [];
 
-      const incomingIds = incoming.filter(a => a.id).map(a => a.id);
-      const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
-      const toUpdate = incoming.filter(a => a.id);
-      const toCreate = incoming.filter(a => !a.id);
+      const incomingIds = incoming.filter((a) => a.id).map((a) => a.id);
+      const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
+      const toUpdate = incoming.filter((a) => a.id);
+      const toCreate = incoming.filter((a) => !a.id);
+
+      await this.prisma.selectedOptionOnAnswer.deleteMany({
+        where: {
+          answerId: { in: idsToDelete },
+        },
+      });
 
       await this.prisma.answer.deleteMany({
         where: { id: { in: idsToDelete } },
       });
 
-      await Promise.all(toUpdate.map(a =>
-        this.prisma.answer.update({
-          where: { id: a.id },
-          data: {
-            sequence: a.sequence,
-            answer: a.answer,
-            questionId: a.questionId,
-          },
-        })
-      ));
+      await Promise.all(
+        toUpdate.map((a) =>
+          this.prisma.answer.update({
+            where: { id: a.id },
+            data: {
+              sequence: a.sequence,
+              answer: a.answer,
+              questionId: a.questionId,
+            },
+          }),
+        ),
+      );
 
       await this.prisma.answer.createMany({
-        data: toCreate.map(a => ({
+        data: toCreate.map((a) => ({
           sequence: a.sequence,
           answer: a.answer,
           questionId: a.questionId,
           formId: id,
+          userId: userId,
         })),
       });
 
@@ -175,50 +200,57 @@ export class FormService {
         data: {
           ...(updateFormDto.templateId && { templateId: updateFormDto.templateId }),
         },
-        include: { Answer: true },
+        include: {
+          Answer: {
+            include: {
+              selectedOptionOnAnswer: {
+                include: { option: true },
+              },
+            },
+          },
+        },
       });
 
       return updatedForm;
-
     } catch (error) {
       console.error(error);
       throw new InternalServerErrorException('Failed to update form');
     }
   }
 
-async remove(formIds: string[]) {
-  try {
-    const answers = await this.prisma.answer.findMany({
-      where: {
-        formId: { in: formIds }
-      },
-      select: { id: true }
-    });
+  async remove(formIds: string[]) {
+    try {
+      const answers = await this.prisma.answer.findMany({
+        where: {
+          formId: { in: formIds },
+        },
+        select: { id: true },
+      });
 
-    const answerIds = answers.map(a => a.id);
+      const answerIds = answers.map((a) => a.id);
 
-    await this.prisma.selectedOptionOnAnswer.deleteMany({
-      where: {
-        answerId: { in: answerIds }
-      }
-    });
+      await this.prisma.selectedOptionOnAnswer.deleteMany({
+        where: {
+          answerId: { in: answerIds },
+        },
+      });
 
-    await this.prisma.answer.deleteMany({
-      where: {
-        formId: { in: formIds }
-      }
-    });
+      await this.prisma.answer.deleteMany({
+        where: {
+          formId: { in: formIds },
+        },
+      });
 
-    await this.prisma.form.deleteMany({
-      where: {
-        id: { in: formIds }
-      }
-    });
+      await this.prisma.form.deleteMany({
+        where: {
+          id: { in: formIds },
+        },
+      });
 
-    return { message: 'Forms and related data successfully deleted' };
-  } catch (error) {
-    console.error(error);
-    throw new Error('Failed to delete forms and related data');
+      return { message: 'Forms and related data successfully deleted' };
+    } catch (error) {
+      console.error(error);
+      throw new Error('Failed to delete forms and related data');
+    }
   }
-}
 }
