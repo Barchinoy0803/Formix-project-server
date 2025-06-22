@@ -70,7 +70,43 @@ export class FormService {
 
   async findAll() {
     try {
-      let forms = await this.prisma.form.findMany()
+      let forms = await this.prisma.form.findMany({
+        include: {
+          template: true
+        }
+      })
+      return forms
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async findAllUserForms(req: Request) {
+    try {
+      const userId = req['user'].id
+      let forms = await this.prisma.form.findMany({
+        where: { userId },
+        include: {
+          template: true
+        }
+      })
+      return forms
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async findForms(req: Request) {
+    try {
+      const userId = req['user'].id
+      let forms = await this.prisma.form.findMany({
+        where: {
+          template: { userId }
+        },
+        include: {
+          template: true
+        }
+      })
       return forms
     } catch (error) {
       console.log(error);
@@ -150,33 +186,39 @@ export class FormService {
     }
   }
 
+async remove(formIds: string[]) {
+  try {
+    const answers = await this.prisma.answer.findMany({
+      where: {
+        formId: { in: formIds }
+      },
+      select: { id: true }
+    });
 
-  async remove(formIds: string[]) {
-    try {
-      await this.prisma.answer.deleteMany({
-        where: {
-          formId: {
-            in: formIds,
-          },
-        },
-      });
+    const answerIds = answers.map(a => a.id);
 
-      const deleted = await this.prisma.form.deleteMany({
-        where: {
-          id: {
-            in: formIds,
-          },
-        },
-      });
+    await this.prisma.selectedOptionOnAnswer.deleteMany({
+      where: {
+        answerId: { in: answerIds }
+      }
+    });
 
-      return {
-        message: `${deleted.count} form(s) deleted successfully.`,
-      };
-    } catch (error) {
-      console.error(error);
-      throw new HttpException('Failed to delete forms', HttpStatus.BAD_REQUEST);
-    }
+    await this.prisma.answer.deleteMany({
+      where: {
+        formId: { in: formIds }
+      }
+    });
+
+    await this.prisma.form.deleteMany({
+      where: {
+        id: { in: formIds }
+      }
+    });
+
+    return { message: 'Forms and related data successfully deleted' };
+  } catch (error) {
+    console.error(error);
+    throw new Error('Failed to delete forms and related data');
   }
-
-
+}
 }

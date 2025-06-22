@@ -22,6 +22,18 @@ export class FormController {
     return this.formService.findAll();
   }
 
+  @UseGuards(AuthGuard)
+  @Get('all-forms')
+  findAllUserForms(@Req() req: Request) {
+    return this.formService.findAllUserForms(req);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('forms')
+  findForms(@Req() req: Request) {
+    return this.formService.findForms(req);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.formService.findOne(id);

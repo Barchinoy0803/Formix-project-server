@@ -51,7 +51,7 @@ model TemplateAccess {
 
 model Form {
   id         String   @id @default(uuid())
-  templateId String
+  templateId String 
   template   Template @relation(fields: [templateId], references: [id])
   userId     String?
   user       User?    @relation(fields: [userId], references: [id])

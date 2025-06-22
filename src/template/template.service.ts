@@ -55,7 +55,6 @@ export class TemplateService {
     }
   }
 
-
   async findAll() {
     try {
       let templates = await this.prisma.template.findMany({
