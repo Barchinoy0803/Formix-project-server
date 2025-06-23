@@ -134,7 +134,6 @@ export class FormService {
       if (!form) {
         throw new HttpException('Not found this form', HttpStatus.NOT_FOUND);
       }
-
       return form;
     } catch (error) {
       console.error(error);
