@@ -52,18 +52,17 @@ export class FormService {
             : {}),
         },
         include: {
-          Answer: { include: { selectedOptionOnAnswer: { include: { option: true } } } }
-          //   Answer: {
-          //     include: {
-          //       selectedOptionOnAnswer: {
-          //         include: {
-          //           option: true,
-          //         },
-          //       },
-          //     },
-          //   },
-          // },
-        });
+          Answer: {
+            include: {
+              selectedOptionOnAnswer: {
+                include: {
+                  option: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
       return form;
     } catch (error) {
