@@ -12,7 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class FormService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(createFormDto: CreateFormDto, req: Request) {
     try {
@@ -25,44 +25,45 @@ export class FormService {
           userId,
           ...(Answer?.length
             ? {
-                Answer: {
-                  create: Answer.map((a) => {
-                    const isMultiChoice = Array.isArray(a.answer);
-                    return {
-                      userId,
-                      sequence: a.sequence,
-                      questionId: a.questionId,
-                      answer: isMultiChoice ? 'MULTI' : String(a.answer),
-                      ...(isMultiChoice
-                        ? {
-                            selectedOptionOnAnswer: {
-                              create: (a.answer as string[]).map((optionId) => ({
-                                option: {
-                                  connect: { id: optionId },
-                                },
-                                isSelected: true,
-                              })),
+              Answer: {
+                create: Answer.map((a) => {
+                  const isMultiChoice = Array.isArray(a.answer);
+                  return {
+                    userId,
+                    sequence: a.sequence,
+                    questionId: a.questionId,
+                    answer: isMultiChoice ? 'MULTI' : String(a.answer),
+                    ...(isMultiChoice
+                      ? {
+                        selectedOptionOnAnswer: {
+                          create: (a.answer as string[]).map((optionId) => ({
+                            option: {
+                              connect: { id: optionId },
                             },
-                          }
-                        : {}),
-                    };
-                  }),
-                },
-              }
+                            isSelected: true,
+                          })),
+                        },
+                      }
+                      : {}),
+                  };
+                }),
+              },
+            }
             : {}),
         },
         include: {
-          Answer: {
-            include: {
-              selectedOptionOnAnswer: {
-                include: {
-                  option: true,
-                },
-              },
-            },
-          },
-        },
-      });
+          Answer: { include: { selectedOptionOnAnswer: { include: { option: true } } } }
+          //   Answer: {
+          //     include: {
+          //       selectedOptionOnAnswer: {
+          //         include: {
+          //           option: true,
+          //         },
+          //       },
+          //     },
+          //   },
+          // },
+        });
 
       return form;
     } catch (error) {
