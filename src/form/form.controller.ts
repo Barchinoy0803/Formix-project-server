@@ -23,6 +23,12 @@ export class FormController {
   }
 
   @UseGuards(AuthGuard)
+  @Post('isexisting/:templateId')
+  isExistingTemplate(@Param('templateId') templateId: string, @Req() req: Request) {
+    return this.formService.isExistingTemplate(templateId, req);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('all-forms')
   findAllUserForms(@Req() req: Request) {
     return this.formService.findAllUserForms(req);

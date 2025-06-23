@@ -55,7 +55,7 @@ model Form {
   template   Template @relation(fields: [templateId], references: [id])
   userId     String?
   user       User?    @relation(fields: [userId], references: [id])
-  Answer     Answer[]
+  answer     Answer[]
   createdAt  DateTime @default(now())
 }
 

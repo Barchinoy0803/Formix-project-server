@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -25,7 +26,7 @@ export class FormService {
           userId,
           ...(Answer?.length
             ? {
-              Answer: {
+              answer: {
                 create: Answer.map((a) => {
                   const isMultiChoice = Array.isArray(a.answer);
                   return {
@@ -52,7 +53,7 @@ export class FormService {
             : {}),
         },
         include: {
-          Answer: {
+          answer: {
             include: {
               selectedOptionOnAnswer: {
                 include: {
@@ -68,6 +69,18 @@ export class FormService {
     } catch (error) {
       console.error(error);
       throw new InternalServerErrorException('Failed to create form');
+    }
+  }
+
+  async isExistingTemplate(templateId: string, req: Request) {
+    try {
+      const userId = req['user'].id
+      const filledTemplate = await this.prisma.form.findFirst({ where: { templateId, userId } })
+
+      if (filledTemplate) return filledTemplate
+      return false
+    } catch (error) {
+      console.log(error);
     }
   }
 
@@ -121,7 +134,7 @@ export class FormService {
       const form = await this.prisma.form.findUnique({
         where: { id },
         include: {
-          Answer: {
+          answer: {
             include: {
               selectedOptionOnAnswer: {
                 include: { option: true },
@@ -142,18 +155,18 @@ export class FormService {
 
   async update(id: string, updateFormDto: UpdateFormDto, req: Request) {
     try {
-      const userId = req['user'].id
+      const userId = req['user']?.id;
 
       const existingForm = await this.prisma.form.findUnique({
         where: { id },
-        include: { Answer: true },
+        include: { answer: true },
       });
 
       if (!existingForm) {
         throw new NotFoundException('Form not found');
       }
 
-      const existingIds = existingForm.Answer.map((a) => a.id);
+      const existingIds = existingForm.answer.map((a) => a.id);
       const incoming = updateFormDto.Answer || [];
 
       const incomingIds = incoming.filter((a) => a.id).map((a) => a.id);
@@ -162,15 +175,15 @@ export class FormService {
       const toCreate = incoming.filter((a) => !a.id);
 
       if (idsToDelete.length > 0) {
-        await this.prisma.$executeRaw`
-          DELETE FROM "SelectedOptionOnAnswer" 
-          WHERE "answerId" IN (${idsToDelete.map(id => `'${id}'`).join(',')})
-        `;
-      }
+        await this.prisma.$executeRawUnsafe(`
+        DELETE FROM "SelectedOptionOnAnswer"
+        WHERE "answerId" IN (${idsToDelete.map((id) => `'${id}'`).join(',')})
+      `);
 
-      await this.prisma.answer.deleteMany({
-        where: { id: { in: idsToDelete } },
-      });
+        await this.prisma.answer.deleteMany({
+          where: { id: { in: idsToDelete } },
+        });
+      }
 
       await Promise.all(
         toUpdate.map((a) =>
@@ -181,19 +194,31 @@ export class FormService {
               answer: a.answer,
               questionId: a.questionId,
             },
-          }),
-        ),
+          })
+        )
       );
 
-      await this.prisma.answer.createMany({
-        data: toCreate.map((a) => ({
-          sequence: a.sequence,
-          answer: a.answer,
-          questionId: a.questionId,
-          formId: id,
-          userId: userId,
-        })),
-      });
+      if (toCreate.length > 0) {
+        await this.prisma.answer.createMany({
+          data: toCreate.map((a) => ({
+            sequence: a.sequence,
+            answer: a.answer,
+            questionId: a.questionId,
+            formId: id,
+            userId: userId,
+          })),
+        });
+      }
+
+      if (updateFormDto.templateId) {
+        const templateExists = await this.prisma.template.findUnique({
+          where: { id: updateFormDto.templateId },
+        });
+
+        if (!templateExists) {
+          return new BadRequestException('Invalid templateId — Template not found');
+        }
+      }
 
       const updatedForm = await this.prisma.form.update({
         where: { id },
@@ -201,7 +226,7 @@ export class FormService {
           ...(updateFormDto.templateId && { templateId: updateFormDto.templateId }),
         },
         include: {
-          Answer: {
+          answer: {
             include: {
               selectedOptionOnAnswer: {
                 include: { option: true },
@@ -213,10 +238,12 @@ export class FormService {
 
       return updatedForm;
     } catch (error) {
-      console.error(error);
+      console.error('Update form error:', error);
       throw new InternalServerErrorException('Failed to update form');
     }
   }
+
+
 
   async remove(formIds: string[]) {
     try {
