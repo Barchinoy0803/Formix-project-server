@@ -6,8 +6,8 @@ class CreateOptionDto {
     @IsString()
     title: string;
 
-    @IsOptional()
-    isSelected?: boolean;
+    @IsNotEmpty()
+    isSelected: boolean;
 }
 
 export class CreateQuestionDto {

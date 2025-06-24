@@ -1,17 +1,18 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsStringOrStringArray } from './custom-validator';
 
 export class UpdateAnswerDto {
   @IsString()
-  @IsOptional() 
+  @IsOptional()
   id?: string;
 
   @IsNumber()
   @IsNotEmpty()
   sequence: number;
 
-  @IsString()
-  @IsNotEmpty()
-  answer: string;
+  @IsStringOrStringArray()
+  @IsOptional()
+  answer: string | string[];
 
   @IsString()
   @IsNotEmpty()

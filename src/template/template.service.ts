@@ -32,8 +32,8 @@ export class TemplateService {
                   createdById: userId,
                   Options: {
                     create: q.Options?.map((o) => ({
-                      title: o.title,
-                      isSelected: o.isSelected ?? false,
+                      title: o.title, // ✅ only title is allowed here
+                      // ❌ remove isSelected
                     })) ?? [],
                   },
                 })),
@@ -47,6 +47,7 @@ export class TemplateService {
           },
         },
       });
+
 
       return template;
     } catch (error) {

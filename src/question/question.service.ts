@@ -50,7 +50,6 @@ export class QuestionService {
     }
   }
 
-
   async findAll(currentUser?: { id: string, role: ROLE }) {
     try {
       console.log(currentUser);
@@ -84,7 +83,7 @@ export class QuestionService {
 
   async findOne(id: string) {
     try {
-      let question = await this.prisma.question.findUnique({ where: { id } })
+      let question = await this.prisma.question.findUnique({ where: { id }, include: { Options: true } })
       if (!question) {
         return new HttpException("Not found this question", HttpStatus.NOT_FOUND)
       }
@@ -107,7 +106,7 @@ export class QuestionService {
           ...rest,
           ...(Options && {
             Options: {
-              deleteMany: {}, 
+              deleteMany: {},
               create: Options.map((o) => ({
                 title: o.title,
                 isSelected: o.isSelected ?? false

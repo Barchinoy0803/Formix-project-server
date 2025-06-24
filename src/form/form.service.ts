@@ -19,51 +19,51 @@ export class FormService {
     try {
       const userId = req['user'].id;
       const { Answer, ...formData } = createFormDto;
-
-      const form = await this.prisma.form.create({
-        data: {
-          ...formData,
-          userId,
-          ...(Answer?.length
-            ? {
-              answer: {
-                create: Answer.map((a) => {
+      let form
+      if (Answer?.length) {
+        form = await this.prisma.form.create({
+          data: {
+            ...formData,
+            userId,
+            answer: {
+              create: await Promise.all(
+                Answer.map(async (a) => {
                   const isMultiChoice = Array.isArray(a.answer);
+
                   return {
                     userId,
                     sequence: a.sequence,
                     questionId: a.questionId,
-                    answer: isMultiChoice ? 'MULTI' : String(a.answer),
-                    ...(isMultiChoice
+                    answer: isMultiChoice ? 'MULTICHOICE' : String(a.answer),
+                    ...(a.options?.length
                       ? {
                         selectedOptionOnAnswer: {
-                          create: (a.answer as string[]).map((optionId) => ({
-                            option: {
-                              connect: { id: optionId },
-                            },
-                            isSelected: true,
+                          create: a.options.map((opt) => ({
+                            option: { connect: { id: opt.id } },
+                            isSelected: opt.isSelected,
                           })),
                         },
                       }
                       : {}),
                   };
-                }),
-              },
-            }
-            : {}),
-        },
-        include: {
-          answer: {
-            include: {
-              selectedOptionOnAnswer: {
-                include: {
-                  option: true,
+                })
+              ),
+            },
+          },
+          include: {
+            answer: {
+              include: {
+                selectedOptionOnAnswer: {
+                  include: {
+                    option: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
+        });
+
+      }
 
       return form;
     } catch (error) {
@@ -155,6 +155,8 @@ export class FormService {
 
   async update(id: string, updateFormDto: UpdateFormDto, req: Request) {
     try {
+      console.log(updateFormDto);
+      
       const userId = req['user']?.id;
 
       const existingForm = await this.prisma.form.findUnique({
@@ -175,34 +177,38 @@ export class FormService {
       const toCreate = incoming.filter((a) => !a.id);
 
       if (idsToDelete.length > 0) {
+        // Delete related selected options (pivot table)
         await this.prisma.$executeRawUnsafe(`
-        DELETE FROM "SelectedOptionOnAnswer"
-        WHERE "answerId" IN (${idsToDelete.map((id) => `'${id}'`).join(',')})
-      `);
+          DELETE FROM "SelectedOptionOnAnswer"
+          WHERE "answerId" IN (${idsToDelete.map((id) => `'${id}'`).join(',')})
+        `);
 
+        // Delete answers
         await this.prisma.answer.deleteMany({
           where: { id: { in: idsToDelete } },
         });
       }
 
+      // Update existing answers
       await Promise.all(
         toUpdate.map((a) =>
           this.prisma.answer.update({
             where: { id: a.id },
             data: {
               sequence: a.sequence,
-              answer: a.answer,
+              answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
               questionId: a.questionId,
             },
           })
         )
       );
 
+      // Create new answers
       if (toCreate.length > 0) {
         await this.prisma.answer.createMany({
           data: toCreate.map((a) => ({
             sequence: a.sequence,
-            answer: a.answer,
+            answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
             questionId: a.questionId,
             formId: id,
             userId: userId,
@@ -210,16 +216,18 @@ export class FormService {
         });
       }
 
+      // Validate templateId if present
       if (updateFormDto.templateId) {
         const templateExists = await this.prisma.template.findUnique({
           where: { id: updateFormDto.templateId },
         });
 
         if (!templateExists) {
-          return new BadRequestException('Invalid templateId — Template not found');
+          throw new BadRequestException('Invalid templateId — Template not found');
         }
       }
 
+      // Final form update
       const updatedForm = await this.prisma.form.update({
         where: { id },
         data: {
@@ -242,7 +250,6 @@ export class FormService {
       throw new InternalServerErrorException('Failed to update form');
     }
   }
-
 
 
   async remove(formIds: string[]) {
