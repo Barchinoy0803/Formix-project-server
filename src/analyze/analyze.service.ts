@@ -1,33 +1,76 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { QUESTION_ANSWER_TYPE } from '@prisma/client';
+import { QUESTION_ANSWER_TYPE, Answer, Options, SelectedOptionOnAnswer } from '@prisma/client';
+
+type AnswerWithRelations = Answer & {
+  user: { id: string; username: string };
+  selectedOptionOnAnswer: (SelectedOptionOnAnswer & { option: Options })[];
+};
 
 @Injectable()
 export class AnalyzeService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async findQuestionForAnalyze(id: string) {
     try {
-      let question = await this.prisma.question.findUnique({ where: { id } })
-      const answers = await this.prisma.answer.findMany({ where: { questionId: id }, include: { user: true } })
+      const question = await this.prisma.question.findUnique({ where: { id } });
+      if (!question) return null;
 
-      switch (question?.type) {
+      const answers = (await this.prisma.answer.findMany({
+        where: { questionId: id },
+        include: {
+          user: { select: { id: true, username: true } },
+          selectedOptionOnAnswer: {
+            where: { isSelected: true },
+            include: { option: { select: { id: true, title: true } } },
+          },
+        },
+      })) as AnswerWithRelations[];
+
+      switch (question.type) {
         case QUESTION_ANSWER_TYPE.OPEN:
         case QUESTION_ANSWER_TYPE.NUMERICAL:
-          return answers
-        case QUESTION_ANSWER_TYPE.CLOSE:
-          const yesAnswers = answers.filter(({ answer }) => answer === "YES")
-          const result = Number(((yesAnswers.length / answers.length) * 100).toFixed(1))
-          return {
-            "YES": result,
-            "NO": 100 - result,
-            answers
+          return answers;
+
+        case QUESTION_ANSWER_TYPE.CLOSE: {
+          const yesCount = answers.filter(a => a.answer === 'YES').length;
+          const total = answers.length || 1;
+          const yesPercent = Number(((yesCount / total) * 100).toFixed(1));
+          return { YES: yesPercent, NO: 100 - yesPercent, answers };
+        }
+
+        case QUESTION_ANSWER_TYPE.MULTICHOICE: {
+          const counter = new Map<string, { title: string; count: number }>();
+
+          for (const ans of answers) {
+            for (const sel of ans.selectedOptionOnAnswer) {
+              const key = sel.optionId;
+              const entry = counter.get(key);
+              if (entry) entry.count += 1;
+              else counter.set(key, { title: sel.option.title, count: 1 });
+            }
           }
-        case QUESTION_ANSWER_TYPE.MULTICHOICE:
-          console.log(answers);
+
+          const totalSelections =
+            [...counter.values()].reduce((a, v) => a + v.count, 0) || 1;
+
+          const stats = [...counter.entries()]
+            .map(([optionId, { title, count }]) => ({
+              optionId,
+              title,
+              count,
+              percentage: Number(
+                ((count / totalSelections) * 100).toFixed(2),
+              ),
+            }))
+            .sort((a, b) => b.count - a.count);
+
+          return { totalSelections, stats, answers };
+        }
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      throw new InternalServerErrorException('Something went wrong!');
     }
   }
 }

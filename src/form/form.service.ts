@@ -15,62 +15,59 @@ import { PrismaService } from '../prisma/prisma.service';
 export class FormService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async create(createFormDto: CreateFormDto, req: Request) {
-    try {
-      const userId = req['user'].id;
-      const { Answer, ...formData } = createFormDto;
-      let form
-      if (Answer?.length) {
-        form = await this.prisma.form.create({
-          data: {
-            ...formData,
-            userId,
-            answer: {
-              create: await Promise.all(
-                Answer.map(async (a) => {
-                  const isMultiChoice = Array.isArray(a.answer);
+ async create(createFormDto: CreateFormDto, req: Request) {
+  try {
+    const userId = req['user'].id;
+    const { Answer, templateId } = createFormDto;
 
-                  return {
-                    userId,
-                    sequence: a.sequence,
-                    questionId: a.questionId,
-                    answer: isMultiChoice ? 'MULTICHOICE' : String(a.answer),
-                    ...(a.options?.length
-                      ? {
-                        selectedOptionOnAnswer: {
-                          create: a.options.map((opt) => ({
-                            option: { connect: { id: opt.id } },
-                            isSelected: opt.isSelected,
-                          })),
-                        },
-                      }
-                      : {}),
-                  };
-                })
-              ),
-            },
-          },
-          include: {
-            answer: {
-              include: {
-                selectedOptionOnAnswer: {
-                  include: {
-                    option: true,
-                  },
-                },
-              },
-            },
-          },
-        });
+    const template = await this.prisma.template.findUnique({
+      where: { id: templateId }
+    });
 
-      }
-
-      return form;
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Failed to create form');
+    if (!template) {
+      throw new NotFoundException(`Template with ID ${templateId} not found`);
     }
+
+    return await this.prisma.form.create({
+      data: {
+        template: { connect: { id: templateId } },
+        user: { connect: { id: userId } },
+        answer: {
+          create: Answer?.map(a => ({
+            sequence: a.sequence,
+            answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
+            question: { connect: { id: a.questionId } },
+            user: { connect: { id: userId } },
+            selectedOptionOnAnswer: {
+              create: Array.isArray(a.answer) 
+                ? a.answer.map(optionId => ({
+                    option: { connect: { id: optionId } },
+                    isSelected: true
+                  }))
+                : []
+            }
+          })) || []
+        }
+      },
+      include: {
+        answer: {
+          include: {
+            selectedOptionOnAnswer: {
+              include: {
+                option: true
+              }
+            }
+          }
+        }
+      }
+    });
+  } catch (error) {
+    if (error.code === 'P2003') {
+      throw new BadRequestException('Invalid relation: One of the referenced IDs does not exist');
+    }
+    throw error;
   }
+}
 
   async isExistingTemplate(templateId: string, req: Request) {
     try {
