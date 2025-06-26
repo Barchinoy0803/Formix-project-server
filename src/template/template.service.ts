@@ -65,7 +65,7 @@ export class TemplateService {
     } catch (error) {
       console.log(error);
     }
-  }
+  }//
 
   async findAllUserTemplates(req: Request) {
     try {
@@ -105,16 +105,15 @@ export class TemplateService {
     try {
       const existingTemplate = await this.prisma.template.findUnique({
         where: { id },
-        include: { Question: true }
+        include: { Question: true },
       });
 
       const existingIds = existingTemplate?.Question.map(q => q.id) || [];
       const incomingIds = updateTemplateDto.Question?.filter(q => q.id).map(q => q.id) || [];
 
       const idsToDelete = existingIds.filter(existingId => !incomingIds.includes(existingId));
-
       await this.prisma.question.deleteMany({
-        where: { id: { in: idsToDelete } }
+        where: { id: { in: idsToDelete } },
       });
 
       const existingQuestions = updateTemplateDto.Question?.filter(q => q.id);
@@ -138,8 +137,9 @@ export class TemplateService {
                 description: q.description ?? '',
                 type: q.type,
                 isPublished: q.isPublished,
-              }
+              },
             })) ?? [],
+
             create: newQuestions?.map(q => ({
               title: q.title,
               sequence: q.sequence,
@@ -149,20 +149,23 @@ export class TemplateService {
               Options: {
                 create: q.Options?.map(o => ({
                   title: o.title,
-                  isSelected: o.isSelected ?? false
-                })) ?? []
-              }
-            })) ?? []
-          }
+                })) ?? [],
+              },
+            })) ?? [],
+          },
         },
         include: {
-          Question: { include: { Options: true } }
-        }
+          Question: {
+            include: {
+              Options: true,
+            },
+          },
+        },
       });
 
       return updated;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw new HttpException('Template update failed', HttpStatus.BAD_REQUEST);
     }
   }

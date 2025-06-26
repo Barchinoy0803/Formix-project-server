@@ -15,59 +15,59 @@ import { PrismaService } from '../prisma/prisma.service';
 export class FormService {
   constructor(private readonly prisma: PrismaService) { }
 
- async create(createFormDto: CreateFormDto, req: Request) {
-  try {
-    const userId = req['user'].id;
-    const { Answer, templateId } = createFormDto;
+  async create(createFormDto: CreateFormDto, req: Request) {
+    try {
+      const userId = req['user'].id;
+      const { Answer, templateId } = createFormDto;
 
-    const template = await this.prisma.template.findUnique({
-      where: { id: templateId }
-    });
+      const template = await this.prisma.template.findUnique({
+        where: { id: templateId }
+      });
 
-    if (!template) {
-      throw new NotFoundException(`Template with ID ${templateId} not found`);
-    }
+      if (!template) {
+        throw new NotFoundException(`Template with ID ${templateId} not found`);
+      }
 
-    return await this.prisma.form.create({
-      data: {
-        template: { connect: { id: templateId } },
-        user: { connect: { id: userId } },
-        answer: {
-          create: Answer?.map(a => ({
-            sequence: a.sequence,
-            answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
-            question: { connect: { id: a.questionId } },
-            user: { connect: { id: userId } },
-            selectedOptionOnAnswer: {
-              create: Array.isArray(a.answer) 
-                ? a.answer.map(optionId => ({
+      return await this.prisma.form.create({
+        data: {
+          template: { connect: { id: templateId } },
+          user: { connect: { id: userId } },
+          answer: {
+            create: Answer?.map(a => ({
+              sequence: a.sequence,
+              answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
+              question: { connect: { id: a.questionId } },
+              user: { connect: { id: userId } },
+              selectedOptionOnAnswer: {
+                create: Array.isArray(a.answer)
+                  ? a.answer.map(optionId => ({
                     option: { connect: { id: optionId } },
                     isSelected: true
                   }))
-                : []
-            }
-          })) || []
-        }
-      },
-      include: {
-        answer: {
-          include: {
-            selectedOptionOnAnswer: {
-              include: {
-                option: true
+                  : []
+              }
+            })) || []
+          }
+        },
+        include: {
+          answer: {
+            include: {
+              selectedOptionOnAnswer: {
+                include: {
+                  option: true
+                }
               }
             }
           }
         }
+      });
+    } catch (error) {
+      if (error.code === 'P2003') {
+        throw new BadRequestException('Invalid relation: One of the referenced IDs does not exist');
       }
-    });
-  } catch (error) {
-    if (error.code === 'P2003') {
-      throw new BadRequestException('Invalid relation: One of the referenced IDs does not exist');
+      throw error;
     }
-    throw error;
   }
-}
 
   async isExistingTemplate(templateId: string, req: Request) {
     try {
@@ -132,6 +132,7 @@ export class FormService {
         where: { id },
         include: {
           answer: {
+            orderBy: { sequence: 'asc' },
             include: {
               selectedOptionOnAnswer: {
                 include: { option: true },
@@ -152,8 +153,6 @@ export class FormService {
 
   async update(id: string, updateFormDto: UpdateFormDto, req: Request) {
     try {
-      console.log(updateFormDto);
-      
       const userId = req['user']?.id;
 
       const existingForm = await this.prisma.form.findUnique({
@@ -174,19 +173,16 @@ export class FormService {
       const toCreate = incoming.filter((a) => !a.id);
 
       if (idsToDelete.length > 0) {
-        // Delete related selected options (pivot table)
         await this.prisma.$executeRawUnsafe(`
           DELETE FROM "SelectedOptionOnAnswer"
           WHERE "answerId" IN (${idsToDelete.map((id) => `'${id}'`).join(',')})
         `);
 
-        // Delete answers
         await this.prisma.answer.deleteMany({
           where: { id: { in: idsToDelete } },
         });
       }
 
-      // Update existing answers
       await Promise.all(
         toUpdate.map((a) =>
           this.prisma.answer.update({
@@ -200,7 +196,6 @@ export class FormService {
         )
       );
 
-      // Create new answers
       if (toCreate.length > 0) {
         await this.prisma.answer.createMany({
           data: toCreate.map((a) => ({
@@ -213,7 +208,6 @@ export class FormService {
         });
       }
 
-      // Validate templateId if present
       if (updateFormDto.templateId) {
         const templateExists = await this.prisma.template.findUnique({
           where: { id: updateFormDto.templateId },
@@ -224,7 +218,6 @@ export class FormService {
         }
       }
 
-      // Final form update
       const updatedForm = await this.prisma.form.update({
         where: { id },
         data: {
@@ -261,18 +254,24 @@ export class FormService {
       const answerIds = answers.map((a) => a.id);
 
       if (answerIds.length > 0) {
-        await this.prisma.$executeRaw`
-          DELETE FROM "SelectedOptionOnAnswer" 
-          WHERE "answerId" IN (${answerIds.map(id => `'${id}'`).join(',')})
-        `;
+        // Step 1: Delete related selected options
+        await this.prisma.selectedOptionOnAnswer.deleteMany({
+          where: {
+            answerId: {
+              in: answerIds,
+            },
+          },
+        });
+
+        // Step 2: Delete answers
+        await this.prisma.answer.deleteMany({
+          where: {
+            id: { in: answerIds },
+          },
+        });
       }
 
-      await this.prisma.answer.deleteMany({
-        where: {
-          formId: { in: formIds },
-        },
-      });
-
+      // Step 3: Delete forms
       await this.prisma.form.deleteMany({
         where: {
           id: { in: formIds },
@@ -285,4 +284,5 @@ export class FormService {
       throw new Error('Failed to delete forms and related data');
     }
   }
+
 }
