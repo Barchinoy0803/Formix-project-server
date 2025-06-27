@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, Query } from '@nestjs/common';
 import { TemplateService } from './template.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
@@ -18,8 +18,8 @@ export class TemplateController {
   }
 
   @Get()
-  findAll() {
-    return this.templateService.findAll();
+  findAll(@Query('search') search?: string) {
+    return this.templateService.findAll(search);
   }
 
   @UseGuards(AuthGuard)

@@ -135,7 +135,7 @@ export class FormService {
             orderBy: { sequence: 'asc' },
             include: {
               selectedOptionOnAnswer: {
-                include: { option: true },
+                select: { optionId: true },
               },
             },
           },
@@ -145,6 +145,12 @@ export class FormService {
       if (!form) {
         throw new HttpException('Not found this form', HttpStatus.NOT_FOUND);
       }
+      
+      form.answer = form.answer.map((answer) => ({
+        ...answer,
+        selectedOptionOnAnswer: answer.selectedOptionOnAnswer.map((s) => s.optionId),
+      })) as any;
+
       return form;
     } catch (error) {
       console.error(error);

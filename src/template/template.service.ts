@@ -32,8 +32,7 @@ export class TemplateService {
                   createdById: userId,
                   Options: {
                     create: q.Options?.map((o) => ({
-                      title: o.title, // ✅ only title is allowed here
-                      // ❌ remove isSelected
+                      title: o.title,
                     })) ?? [],
                   },
                 })),
@@ -56,16 +55,29 @@ export class TemplateService {
     }
   }
 
-  async findAll() {
+  async findAll(search?: string) {
     try {
-      let templates = await this.prisma.template.findMany({
-        where: { type: FORM_TYPE.PUBLIC }
-      })
-      return templates
+      const whereCondition: any = {
+        type: FORM_TYPE.PUBLIC,
+      };
+
+      if (search) {
+        whereCondition.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      const templates = await this.prisma.template.findMany({
+        where: whereCondition,
+      });
+
+      return templates;
     } catch (error) {
       console.log(error);
+      throw error;
     }
-  }//
+  }
 
   async findAllUserTemplates(req: Request) {
     try {
@@ -101,76 +113,83 @@ export class TemplateService {
     }
   }
 
-  async update(id: string, updateTemplateDto: UpdateTemplateDto) {
-    try {
-      const existingTemplate = await this.prisma.template.findUnique({
-        where: { id },
-        include: { Question: true },
-      });
+async update(id: string, updateTemplateDto: UpdateTemplateDto) {
+  try {
+    const existingTemplate = await this.prisma.template.findUnique({
+      where: { id },
+      include: { Question: true },
+    });
 
-      const existingIds = existingTemplate?.Question.map(q => q.id) || [];
-      const incomingIds = updateTemplateDto.Question?.filter(q => q.id).map(q => q.id) || [];
+    const existingIds = existingTemplate?.Question.map(q => q.id) || [];
+    const incomingIds = updateTemplateDto.Question?.filter(q => q.id).map(q => q.id) || [];
 
-      const idsToDelete = existingIds.filter(existingId => !incomingIds.includes(existingId));
-      await this.prisma.question.deleteMany({
-        where: { id: { in: idsToDelete } },
-      });
+    const idsToDelete = existingIds.filter(existingId => !incomingIds.includes(existingId));
+    await this.prisma.question.deleteMany({
+      where: { id: { in: idsToDelete } },
+    });
 
-      const existingQuestions = updateTemplateDto.Question?.filter(q => q.id);
-      const newQuestions = updateTemplateDto.Question?.filter(q => !q.id);
+    const existingQuestions = updateTemplateDto.Question?.filter(q => q.id);
+    const newQuestions = updateTemplateDto.Question?.filter(q => !q.id);
 
-      const updated = await this.prisma.template.update({
-        where: { id },
-        data: {
-          title: updateTemplateDto.title,
-          topic: updateTemplateDto.topic,
-          description: updateTemplateDto.description,
-          image: updateTemplateDto.image,
-          type: updateTemplateDto.type,
+    const updated = await this.prisma.template.update({
+      where: { id },
+      data: {
+        title: updateTemplateDto.title,
+        topic: updateTemplateDto.topic,
+        description: updateTemplateDto.description,
+        image: updateTemplateDto.image,
+        type: updateTemplateDto.type,
 
-          Question: {
-            update: existingQuestions?.map(q => ({
-              where: { id: q.id },
-              data: {
-                title: q.title,
-                sequence: q.sequence,
-                description: q.description ?? '',
-                type: q.type,
-                isPublished: q.isPublished,
-              },
-            })) ?? [],
-
-            create: newQuestions?.map(q => ({
+        Question: {
+          update: existingQuestions?.map(q => ({
+            where: { id: q.id },
+            data: {
               title: q.title,
               sequence: q.sequence,
               description: q.description ?? '',
               type: q.type,
               isPublished: q.isPublished,
+
               Options: {
+                deleteMany: {}, 
                 create: q.Options?.map(o => ({
                   title: o.title,
                 })) ?? [],
               },
-            })) ?? [],
-          },
-        },
-        include: {
-          Question: {
-            include: {
-              Options: true,
             },
+          })) ?? [],
+
+          create: newQuestions?.map(q => ({
+            title: q.title,
+            sequence: q.sequence,
+            description: q.description ?? '',
+            type: q.type,
+            isPublished: q.isPublished,
+            Options: {
+              create: q.Options?.map(o => ({
+                title: o.title,
+              })) ?? [],
+            },
+          })) ?? [],
+        },
+      },
+
+      include: {
+        Question: {
+          include: {
+            Options: true,
           },
         },
-      });
+      },
+    });
 
-      return updated;
-    } catch (error) {
-      console.error(error);
-      throw new HttpException('Template update failed', HttpStatus.BAD_REQUEST);
-    }
+    return updated;
+
+  } catch (error) {
+    console.error(error);
+    throw new HttpException('Template update failed', HttpStatus.BAD_REQUEST);
   }
-
-
+}
 
   async remove(templateIds: string[]) {
     try {
@@ -204,6 +223,4 @@ export class TemplateService {
       throw new HttpException('Failed to delete templates', HttpStatus.BAD_REQUEST);
     }
   }
-
-
 }

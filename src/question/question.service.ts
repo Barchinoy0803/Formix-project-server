@@ -52,8 +52,6 @@ export class QuestionService {
 
   async findAll(currentUser?: { id: string, role: ROLE }) {
     try {
-      console.log(currentUser);
-
       let whereCondition = {}
 
       if (!currentUser) {

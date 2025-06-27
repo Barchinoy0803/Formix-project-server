@@ -6,7 +6,7 @@ class CreateOptionDto {
     @IsString()
     title: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     isSelected: boolean;
 }
 
