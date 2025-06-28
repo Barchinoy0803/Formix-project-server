@@ -47,6 +47,7 @@ model TemplateAccess {
   user       User     @relation(fields: [userId], references: [id])
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
+   @@unique([templateId, userId])
 }
 
 model Form {

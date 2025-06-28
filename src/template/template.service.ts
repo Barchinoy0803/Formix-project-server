@@ -1,69 +1,75 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Request } from 'express';
-import { FORM_TYPE } from '@prisma/client';
+import { FORM_TYPE, Prisma } from '@prisma/client';
 
 @Injectable()
 export class TemplateService {
-  constructor(
-    private readonly prisma: PrismaService
-  ) { }
+  constructor(private readonly prisma: PrismaService) {}
 
-async create(createTemplateDto: CreateTemplateDto, req: Request) {
-  try {
-    const userId = req['user'].id;
-    const { Question, allowedUsers, ...templateData } = createTemplateDto;
+  async create(createTemplateDto: CreateTemplateDto, req: Request) {
+    try {
+      const userId = req['user'].id;
+      const { Question, allowedUsers, ...templateData } = createTemplateDto;
 
-    const template = await this.prisma.template.create({
-      data: {
-        ...templateData,
-        userId,
-        ...(Question?.length
-          ? {
-              Question: {
-                create: Question.map((q) => ({
-                  title: q.title,
-                  sequence: q.sequence,
-                  description: q.description ?? '',
-                  type: q.type,
-                  isPublished: q.isPublished,
-                  createdById: userId,
-                  Options: {
-                    create: q.Options?.map((o) => ({
-                      title: o.title,
-                    })) ?? [],
-                  },
-                })),
-              },
-            }
-          : {}),
-        ...(templateData.type === 'PRIVATE' && allowedUsers?.length
-          ? {
-              TemplateAccess: {
-                create: allowedUsers.map((user) => ({
-                  userId: user.id
-                })),
-              },
-            }
-          : {}),
-      },
-      include: {
-        Question: {
-          include: { Options: true },
+      const template = await this.prisma.template.create({
+        data: {
+          ...templateData,
+          userId,
+          ...(Question?.length
+            ? {
+                Question: {
+                  create: Question.map((q) => ({
+                    title: q.title,
+                    sequence: q.sequence,
+                    description: q.description ?? '',
+                    type: q.type,
+                    isPublished: q.isPublished,
+                    createdById: userId,
+                    Options: {
+                      create:
+                        q.Options?.map((o) => ({
+                          title: o.title,
+                        })) ?? [],
+                    },
+                  })),
+                },
+              }
+            : {}),
+          ...(templateData.type === 'PRIVATE' && allowedUsers?.length
+            ? {
+                TemplateAccess: {
+                  create: allowedUsers.map((user) => ({
+                    userId: user.id,
+                  })),
+                },
+              }
+            : {}),
         },
-        TemplateAccess: true,
-      },
-    });
+        include: {
+          Question: {
+            include: { Options: true },
+          },
+          TemplateAccess: true,
+        },
+      });
 
-    return template;
-  } catch (error) {
-    console.error(error);
-    throw new HttpException('Template creation failed', HttpStatus.BAD_REQUEST);
+      return template;
+    } catch (error) {
+      console.error(error);
+      throw new HttpException(
+        'Template creation failed',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
-}
-
 
   async findAll(search?: string) {
     try {
@@ -91,127 +97,152 @@ async create(createTemplateDto: CreateTemplateDto, req: Request) {
 
   async findAllUserTemplates(req: Request, search?: string) {
     try {
-      const userId = req['user'].id
+      const userId = req['user'].id;
 
       const whereCondition: any = {
-        userId
+        userId,
       };
 
       if (search) {
         whereCondition.OR = [
           { title: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } },
-        ]
+        ];
       }
 
       let templates = await this.prisma.template.findMany({
         where: whereCondition,
         include: {
-          Question: true
-        }
-      })
-      return templates
+          Question: true,
+        },
+      });
+      return templates;
     } catch (error) {
       console.log(error);
-      
     }
   }
 
   async findOne(id: string) {
     try {
-      let template = await this.prisma.template.findUnique({
+      const template = await this.prisma.template.findUnique({
         where: { id },
         include: {
-          Question: {
-            include: { Options: true }
-          },
-        }
-      })
-      if (!template) {
-        throw new NotFoundException("Not found")
-      }
-      return template
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  async update(id: string, updateTemplateDto: UpdateTemplateDto) {
-    try {
-      const existingTemplate = await this.prisma.template.findUnique({
-        where: { id },
-        include: { Question: true },
-      });
-
-      const existingIds = existingTemplate?.Question.map(q => q.id) || [];
-      const incomingIds = updateTemplateDto.Question?.filter(q => q.id).map(q => q.id) || [];
-
-      const idsToDelete = existingIds.filter(existingId => !incomingIds.includes(existingId));
-      await this.prisma.question.deleteMany({
-        where: { id: { in: idsToDelete } },
-      });
-
-      const existingQuestions = updateTemplateDto.Question?.filter(q => q.id);
-      const newQuestions = updateTemplateDto.Question?.filter(q => !q.id);
-
-      const updated = await this.prisma.template.update({
-        where: { id },
-        data: {
-          title: updateTemplateDto.title,
-          topic: updateTemplateDto.topic,
-          description: updateTemplateDto.description,
-          image: updateTemplateDto.image,
-          type: updateTemplateDto.type,
-
-          Question: {
-            update: existingQuestions?.map(q => ({
-              where: { id: q.id },
-              data: {
-                title: q.title,
-                sequence: q.sequence,
-                description: q.description ?? '',
-                type: q.type,
-                isPublished: q.isPublished,
-
-                Options: {
-                  deleteMany: {},
-                  create: q.Options?.map(o => ({
-                    title: o.title,
-                  })) ?? [],
-                },
-              },
-            })) ?? [],
-
-            create: newQuestions?.map(q => ({
-              title: q.title,
-              sequence: q.sequence,
-              description: q.description ?? '',
-              type: q.type,
-              isPublished: q.isPublished,
-              Options: {
-                create: q.Options?.map(o => ({
-                  title: o.title,
-                })) ?? [],
-              },
-            })) ?? [],
-          },
-        },
-
-        include: {
-          Question: {
-            include: {
-              Options: true,
+          Question: { include: { Options: true } },
+          TemplateAccess: {
+            select: {
+              user: { select: { id: true, username: true } },
             },
           },
         },
       });
 
-      return updated;
+      if (!template) throw new NotFoundException('Not found');
 
-    } catch (error) {
-      console.error(error);
-      throw new HttpException('Template update failed', HttpStatus.BAD_REQUEST);
+      const allowedUsers = (template.TemplateAccess ?? []).map((a) => ({
+        id: a.user.id,
+        username: a.user.username,
+      }));
+
+      const { TemplateAccess: _, ...rest } = template;
+      return { ...rest, TemplateAccess: allowedUsers };
+    } catch (err) {
+      console.error(err);
+      throw err;
     }
+  }
+
+  async update(id: string, dto: UpdateTemplateDto) {
+    const {
+      Question: qs = [],
+      allowedUsers,
+      TemplateAccess: tAcc,
+      ...tpl
+    } = dto as any;
+
+    const ex = await this.prisma.template.findUnique({
+      where: { id },
+      include: { Question: true },
+    });
+    if (!ex) throw new HttpException('Template not found', 404);
+
+    await this.prisma.question.deleteMany({
+      where: {
+        id: {
+          in: ex.Question.filter((q) => !qs.some((i) => i.id === q.id)).map(
+            (q) => q.id,
+          ),
+        },
+      },
+    });
+
+    const qUpd = qs
+      .filter((q) => q.id)
+      .map((q) => ({
+        where: { id: q.id },
+        data: {
+          title: q.title,
+          sequence: q.sequence,
+          description: q.description ?? '',
+          type: q.type,
+          isPublished: q.isPublished,
+          Options: {
+            deleteMany: {},
+            create: q.Options?.map((o) => ({ title: o.title })) ?? [],
+          },
+        },
+      }));
+
+    const qNew = qs
+      .filter((q) => !q.id)
+      .map((q) => ({
+        title: q.title,
+        sequence: q.sequence,
+        description: q.description ?? '',
+        type: q.type,
+        isPublished: q.isPublished,
+        Options: { create: q.Options?.map((o) => ({ title: o.title })) ?? [] },
+      }));
+
+    const ids = [
+      ...new Set(
+        (allowedUsers ?? tAcc ?? [])
+          .map((u: any) => ('id' in u ? u.id : u.user?.id))
+          .filter(Boolean),
+      ),
+    ] as string[];
+
+    const data: Prisma.TemplateUpdateInput = {
+      ...tpl,
+      Question: { update: qUpd, create: qNew },
+      TemplateAccess:
+        tpl.type === 'PRIVATE'
+          ? {
+              deleteMany: {},
+              createMany: {
+                data: ids.map((userId) => ({ userId })),
+                skipDuplicates: true,
+              },
+            }
+          : { deleteMany: {} },
+    };
+
+    const updated = await this.prisma.template.update({
+      where: { id },
+      data,
+      include: {
+        Question: { include: { Options: true } },
+        TemplateAccess: {
+          select: { user: { select: { id: true, username: true } } },
+        },
+      },
+    });
+
+    const allowed = updated.TemplateAccess.map((a) => ({
+      id: a.user.id,
+      username: a.user.username,
+    }));
+    const { TemplateAccess, ...rest } = updated;
+    return { ...rest, TemplateAccess: allowed };
   }
 
   async remove(templateIds: string[]) {
@@ -243,7 +274,10 @@ async create(createTemplateDto: CreateTemplateDto, req: Request) {
       return deleted;
     } catch (error) {
       console.error(error);
-      throw new HttpException('Failed to delete templates', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Failed to delete templates',
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 }
