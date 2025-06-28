@@ -10,6 +10,12 @@ import {
 import { Type } from "class-transformer"
 import { CreateQuestionDto } from "../../question/dto/create-question.dto"
 
+class AllowedUserDto {
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+}
+
 export class CreateTemplateDto {
   @IsString()
   @IsNotEmpty()
@@ -36,4 +42,10 @@ export class CreateTemplateDto {
   @Type(() => CreateQuestionDto)
   @IsOptional()
   Question?: CreateQuestionDto[]
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AllowedUserDto)
+  @IsOptional()
+  allowedUsers?: AllowedUserDto[]
 }

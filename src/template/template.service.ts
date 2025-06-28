@@ -11,17 +11,17 @@ export class TemplateService {
     private readonly prisma: PrismaService
   ) { }
 
-  async create(createTemplateDto: CreateTemplateDto, req: Request) {
-    try {
-      const userId = req['user'].id;
-      const { Question, ...templateData } = createTemplateDto;
+async create(createTemplateDto: CreateTemplateDto, req: Request) {
+  try {
+    const userId = req['user'].id;
+    const { Question, allowedUsers, ...templateData } = createTemplateDto;
 
-      const template = await this.prisma.template.create({
-        data: {
-          ...templateData,
-          userId,
-          ...(Question?.length
-            ? {
+    const template = await this.prisma.template.create({
+      data: {
+        ...templateData,
+        userId,
+        ...(Question?.length
+          ? {
               Question: {
                 create: Question.map((q) => ({
                   title: q.title,
@@ -38,22 +38,32 @@ export class TemplateService {
                 })),
               },
             }
-            : {}),
+          : {}),
+        ...(templateData.type === 'PRIVATE' && allowedUsers?.length
+          ? {
+              TemplateAccess: {
+                create: allowedUsers.map((user) => ({
+                  userId: user.id
+                })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        Question: {
+          include: { Options: true },
         },
-        include: {
-          Question: {
-            include: { Options: true },
-          },
-        },
-      });
+        TemplateAccess: true,
+      },
+    });
 
-
-      return template;
-    } catch (error) {
-      console.error(error);
-      throw new HttpException('Template creation failed', HttpStatus.BAD_REQUEST);
-    }
+    return template;
+  } catch (error) {
+    console.error(error);
+    throw new HttpException('Template creation failed', HttpStatus.BAD_REQUEST);
   }
+}
+
 
   async findAll(search?: string) {
     try {

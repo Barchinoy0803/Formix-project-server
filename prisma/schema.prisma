@@ -41,7 +41,7 @@ model Template {
   TemplateAccess TemplateAccess[]
 }
 
-model TemplateAccess {
+model TemplateAccess { 
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id])
