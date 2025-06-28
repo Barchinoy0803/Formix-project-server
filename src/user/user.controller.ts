@@ -11,8 +11,7 @@ import { SelfGuard } from '../guards/self.guard';
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  @Roles(ROLE.ADMIN)
-  @UseGuards(AuthGuard, RoleGuard)
+  @UseGuards(AuthGuard)
   @Get()
   findAll() {
     return this.userService.findAll();
