@@ -41,13 +41,14 @@ model Template {
   TemplateAccess TemplateAccess[]
 }
 
-model TemplateAccess { 
+model TemplateAccess {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id])
   templateId String
   template   Template @relation(fields: [templateId], references: [id])
-   @@unique([templateId, userId])
+
+  @@unique([templateId, userId])
 }
 
 model Form {

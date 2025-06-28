@@ -6,6 +6,7 @@ import { Request } from 'express';
 import { AuthGuard } from '../guards/auth.guard';
 import { OwnerGuard } from '../guards/owner.guard';
 import { OwnerEntity } from '../decorators/owner-entity.decorator';
+import { OptionalAuthGuard } from 'src/guards/optionalAuthGuard.guard';
 
 @Controller('template')
 export class TemplateController {
@@ -23,9 +24,10 @@ export class TemplateController {
     return this.templateService.findAllUserTemplates(req, search);
   }
 
+  @UseGuards(OptionalAuthGuard)
   @Get()
-  findAll(@Query('search') search?: string) {
-    return this.templateService.findAll(search);
+  findAll(@Req() req: Request, @Query('search') search?: string) {
+    return this.templateService.findAll(req, search); 
   }
 
 

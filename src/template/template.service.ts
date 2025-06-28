@@ -12,7 +12,7 @@ import { FORM_TYPE, Prisma } from '@prisma/client';
 
 @Injectable()
 export class TemplateService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(createTemplateDto: CreateTemplateDto, req: Request) {
     try {
@@ -25,32 +25,29 @@ export class TemplateService {
           userId,
           ...(Question?.length
             ? {
-                Question: {
-                  create: Question.map((q) => ({
-                    title: q.title,
-                    sequence: q.sequence,
-                    description: q.description ?? '',
-                    type: q.type,
-                    isPublished: q.isPublished,
-                    createdById: userId,
-                    Options: {
-                      create:
-                        q.Options?.map((o) => ({
-                          title: o.title,
-                        })) ?? [],
-                    },
-                  })),
-                },
-              }
+              Question: {
+                create: Question.map((q) => ({
+                  title: q.title,
+                  sequence: q.sequence,
+                  description: q.description ?? '',
+                  type: q.type,
+                  isPublished: q.isPublished,
+                  createdById: userId,
+                  Options: {
+                    create: q.Options?.map((o) => ({ title: o.title })) ?? [],
+                  },
+                })),
+              },
+            }
             : {}),
           ...(templateData.type === 'PRIVATE' && allowedUsers?.length
             ? {
-                TemplateAccess: {
-                  create: allowedUsers.map((user) => ({
-                    userId: user.id,
-                  })),
-                },
-              }
+              TemplateAccess: {
+                create: allowedUsers.map((user) => ({
+                  userId: user.id,
+                })),
+              },
+            }
             : {}),
         },
         include: {
@@ -64,15 +61,14 @@ export class TemplateService {
       return template;
     } catch (error) {
       console.error(error);
-      throw new HttpException(
-        'Template creation failed',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Template creation failed', HttpStatus.BAD_REQUEST);
     }
   }
 
-  async findAll(search?: string) {
+  async findAll(req: Request, search?: string) {
     try {
+      const userId = req['user']?.id;
+
       const whereCondition: any = {
         type: FORM_TYPE.PUBLIC,
       };
@@ -85,7 +81,26 @@ export class TemplateService {
       }
 
       const templates = await this.prisma.template.findMany({
-        where: whereCondition,
+        where: {
+          OR: [
+            whereCondition,
+            ...(userId
+              ? [
+                {
+                  type: FORM_TYPE.PRIVATE,
+                  TemplateAccess: {
+                    some: {
+                      userId,
+                    },
+                  },
+                },
+              ]
+              : []),
+          ],
+        },
+        include: {
+          TemplateAccess: true,
+        },
       });
 
       return templates;
@@ -94,6 +109,7 @@ export class TemplateService {
       throw error;
     }
   }
+
 
   async findAllUserTemplates(req: Request, search?: string) {
     try {
@@ -217,12 +233,12 @@ export class TemplateService {
       TemplateAccess:
         tpl.type === 'PRIVATE'
           ? {
-              deleteMany: {},
-              createMany: {
-                data: ids.map((userId) => ({ userId })),
-                skipDuplicates: true,
-              },
-            }
+            deleteMany: {},
+            createMany: {
+              data: ids.map((userId) => ({ userId })),
+              skipDuplicates: true,
+            },
+          }
           : { deleteMany: {} },
     };
 
