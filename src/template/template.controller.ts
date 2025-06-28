@@ -17,16 +17,17 @@ export class TemplateController {
     return this.templateService.create(createTemplateDto, req);
   }
 
+  @UseGuards(AuthGuard)
+  @Get('owner')
+  findAllUserTemplates(@Req() req: Request, @Query('search') search?: string) {
+    return this.templateService.findAllUserTemplates(req, search);
+  }
+
   @Get()
   findAll(@Query('search') search?: string) {
     return this.templateService.findAll(search);
   }
 
-  @UseGuards(AuthGuard)
-  @Get('owner')
-  findAllUserTemplates(@Req() req: Request) {
-    return this.templateService.findAllUserTemplates(req);
-  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
