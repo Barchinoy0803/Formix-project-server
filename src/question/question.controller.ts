@@ -48,6 +48,11 @@ export class QuestionController {
     return this.questionService.findOne(id);
   }
 
+  @Get(':templateId')
+  findTemplateQuestions(@Param('templateId') templateId: string) {
+    return this.questionService.getTemplateQuestions(templateId);
+  }
+
   @UseGuards(AuthGuard, OwnerGuard)
   @OwnerEntity('question')
   @Patch(':id')

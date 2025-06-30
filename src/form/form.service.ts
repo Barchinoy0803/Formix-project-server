@@ -145,7 +145,7 @@ export class FormService {
       if (!form) {
         throw new HttpException('Not found this form', HttpStatus.NOT_FOUND);
       }
-      
+
       form.answer = form.answer.map((answer) => ({
         ...answer,
         selectedOptionOnAnswer: answer.selectedOptionOnAnswer.map((s) => s.optionId),
@@ -157,95 +157,155 @@ export class FormService {
     }
   }
 
-  async update(id: string, updateFormDto: UpdateFormDto, req: Request) {
-    try {
-      const userId = req['user']?.id;
+async update(id: string, updateFormDto: UpdateFormDto, req: Request) {
+  try {
+    const userId = req['user']?.id;
 
-      const existingForm = await this.prisma.form.findUnique({
-        where: { id },
-        include: { answer: true },
+    const existingForm = await this.prisma.form.findUnique({
+      where: { id },
+      include: { answer: true },
+    });
+
+    if (!existingForm) {
+      throw new NotFoundException('Form not found');
+    }
+
+    const existingIds = existingForm.answer.map((a) => a.id);
+    const incoming = updateFormDto.Answer || [];
+
+    const incomingIds = incoming.filter((a) => a.id).map((a) => a.id);
+    const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
+    const toUpdate = incoming.filter((a) => a.id);
+    const toCreate = incoming.filter((a) => !a.id);
+
+    if (idsToDelete.length > 0) {
+      await this.prisma.selectedOptionOnAnswer.deleteMany({
+        where: { answerId: { in: idsToDelete } },
       });
 
-      if (!existingForm) {
-        throw new NotFoundException('Form not found');
-      }
+      await this.prisma.answer.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
+    }
 
-      const existingIds = existingForm.answer.map((a) => a.id);
-      const incoming = updateFormDto.Answer || [];
-
-      const incomingIds = incoming.filter((a) => a.id).map((a) => a.id);
-      const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id));
-      const toUpdate = incoming.filter((a) => a.id);
-      const toCreate = incoming.filter((a) => !a.id);
-
-      if (idsToDelete.length > 0) {
-        await this.prisma.$executeRawUnsafe(`
-          DELETE FROM "SelectedOptionOnAnswer"
-          WHERE "answerId" IN (${idsToDelete.map((id) => `'${id}'`).join(',')})
-        `);
-
-        await this.prisma.answer.deleteMany({
-          where: { id: { in: idsToDelete } },
-        });
-      }
-
-      await Promise.all(
-        toUpdate.map((a) =>
-          this.prisma.answer.update({
-            where: { id: a.id },
-            data: {
-              sequence: a.sequence,
-              answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
-              questionId: a.questionId,
-            },
-          })
-        )
-      );
-
-      if (toCreate.length > 0) {
-        await this.prisma.answer.createMany({
-          data: toCreate.map((a) => ({
+    await Promise.all(
+      toUpdate.map((a) =>
+        this.prisma.answer.update({
+          where: { id: a.id },
+          data: {
             sequence: a.sequence,
             answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
             questionId: a.questionId,
-            formId: id,
-            userId: userId,
-          })),
-        });
-      }
+          },
+        })
+      )
+    );
 
-      if (updateFormDto.templateId) {
-        const templateExists = await this.prisma.template.findUnique({
-          where: { id: updateFormDto.templateId },
+    await Promise.all(
+      toUpdate
+        .filter((a) => Array.isArray(a.answer) && a.selectedOptionOnAnswer?.length)
+        .map(async (a) => {
+          const answerId = a.id!;
+          await this.prisma.selectedOptionOnAnswer.deleteMany({
+            where: { answerId },
+          });
+
+          const existingOptions = await this.prisma.options.findMany({
+            where: {
+              id: { in: a.selectedOptionOnAnswer },
+            },
+            select: { id: true },
+          });
+
+          const validOptionIds = new Set(existingOptions.map((o) => o.id));
+          const data = a.selectedOptionOnAnswer!
+            .filter((optionId) => validOptionIds.has(optionId))
+            .map((optionId) => ({
+              answerId,
+              optionId,
+              isSelected: true,
+            }));
+
+          if (data.length > 0) {
+            await this.prisma.selectedOptionOnAnswer.createMany({
+              data,
+              skipDuplicates: true,
+            });
+          }
+        })
+    );
+
+    for (const a of toCreate) {
+      const created = await this.prisma.answer.create({
+        data: {
+          sequence: a.sequence,
+          answer: Array.isArray(a.answer) ? 'MULTICHOICE' : String(a.answer),
+          questionId: a.questionId,
+          formId: id,
+          userId: userId,
+        },
+      });
+
+      if (Array.isArray(a.answer) && a.selectedOptionOnAnswer?.length) {
+        const existingOptions = await this.prisma.options.findMany({
+          where: {
+            id: { in: a.selectedOptionOnAnswer },
+          },
+          select: { id: true },
         });
 
-        if (!templateExists) {
-          throw new BadRequestException('Invalid templateId — Template not found');
+        const validOptionIds = new Set(existingOptions.map((o) => o.id));
+        const data = a.selectedOptionOnAnswer
+          .filter((optionId) => validOptionIds.has(optionId))
+          .map((optionId) => ({
+            answerId: created.id,
+            optionId,
+            isSelected: true,
+          }));
+
+        if (data.length > 0) {
+          await this.prisma.selectedOptionOnAnswer.createMany({
+            data,
+            skipDuplicates: true,
+          });
         }
       }
+    }
 
-      const updatedForm = await this.prisma.form.update({
-        where: { id },
-        data: {
-          ...(updateFormDto.templateId && { templateId: updateFormDto.templateId }),
-        },
-        include: {
-          answer: {
-            include: {
-              selectedOptionOnAnswer: {
-                include: { option: true },
+    if (updateFormDto.templateId) {
+      const templateExists = await this.prisma.template.findUnique({
+        where: { id: updateFormDto.templateId },
+      });
+
+      if (!templateExists) {
+        throw new BadRequestException('Invalid templateId — Template not found');
+      }
+    }
+
+    const updatedForm = await this.prisma.form.update({
+      where: { id },
+      data: {
+        ...(updateFormDto.templateId && { templateId: updateFormDto.templateId }),
+      },
+      include: {
+        answer: {
+          include: {
+            selectedOptionOnAnswer: {
+              include: {
+                option: true,
               },
             },
           },
         },
-      });
+      },
+    });
 
-      return updatedForm;
-    } catch (error) {
-      console.error('Update form error:', error);
-      throw new InternalServerErrorException('Failed to update form');
-    }
+    return updatedForm;
+  } catch (error) {
+    console.error('Update form error:', error);
+    throw new InternalServerErrorException('Failed to update form');
   }
+}
 
 
   async remove(formIds: string[]) {
@@ -260,7 +320,6 @@ export class FormService {
       const answerIds = answers.map((a) => a.id);
 
       if (answerIds.length > 0) {
-        // Step 1: Delete related selected options
         await this.prisma.selectedOptionOnAnswer.deleteMany({
           where: {
             answerId: {
@@ -269,7 +328,6 @@ export class FormService {
           },
         });
 
-        // Step 2: Delete answers
         await this.prisma.answer.deleteMany({
           where: {
             id: { in: answerIds },
@@ -277,7 +335,6 @@ export class FormService {
         });
       }
 
-      // Step 3: Delete forms
       await this.prisma.form.deleteMany({
         where: {
           id: { in: formIds },

@@ -15,5 +15,6 @@ export class CreateAnswerDto {
   questionId: string;
 
   @IsOptional()
-  options?: { id: string; isSelected: boolean }[]; 
+  options?: { id: string; isSelected: boolean }[];
+
 }

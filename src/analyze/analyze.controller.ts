@@ -7,6 +7,6 @@ export class AnalyzeController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.analyzeService.findQuestionForAnalyze(id);
+    return this.analyzeService.findAnalyzeForQuestion(id);
   }
 }

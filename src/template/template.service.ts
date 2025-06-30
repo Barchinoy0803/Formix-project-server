@@ -8,7 +8,7 @@ import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Request } from 'express';
-import { FORM_TYPE, Prisma } from '@prisma/client';
+import { FORM_TYPE, Prisma, ROLE } from '@prisma/client';
 
 @Injectable()
 export class TemplateService {
@@ -23,6 +23,13 @@ export class TemplateService {
         data: {
           ...templateData,
           userId,
+          ...(createTemplateDto.tagIds?.length
+            ? {
+              tags: {
+                connect: createTemplateDto.tagIds.map((id) => ({ id })),
+              },
+            }
+            : {}),
           ...(Question?.length
             ? {
               Question: {
@@ -55,6 +62,7 @@ export class TemplateService {
             include: { Options: true },
           },
           TemplateAccess: true,
+          tags: true
         },
       });
 
@@ -69,34 +77,46 @@ export class TemplateService {
     try {
       const userId = req['user']?.id;
 
-      const whereCondition: any = {
-        type: FORM_TYPE.PUBLIC,
-      };
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      const isAdmin = user?.role === ROLE.ADMIN;
 
-      if (search) {
-        whereCondition.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-        ];
+      const searchCondition = search
+        ? {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+        : {};
+
+      const whereConditions: any[] = [
+        {
+          type: FORM_TYPE.PUBLIC,
+          ...searchCondition,
+        },
+      ];
+
+      if (userId) {
+        const privateTemplateAccess = isAdmin
+          ? {}
+          : {
+            TemplateAccess: {
+              some: {
+                userId,
+              },
+            },
+          };
+
+        whereConditions.push({
+          type: FORM_TYPE.PRIVATE,
+          ...privateTemplateAccess,
+          ...searchCondition,
+        });
       }
 
       const templates = await this.prisma.template.findMany({
         where: {
-          OR: [
-            whereCondition,
-            ...(userId
-              ? [
-                {
-                  type: FORM_TYPE.PRIVATE,
-                  TemplateAccess: {
-                    some: {
-                      userId,
-                    },
-                  },
-                },
-              ]
-              : []),
-          ],
+          OR: whereConditions,
         },
         include: {
           TemplateAccess: true,
@@ -105,36 +125,50 @@ export class TemplateService {
 
       return templates;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }
-
 
   async findAllUserTemplates(req: Request, search?: string) {
     try {
       const userId = req['user'].id;
 
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      const isAdmin = user?.role === ROLE.ADMIN;
+
+      const searchCondition = search
+        ? {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+        : {};
+
       const whereCondition: any = {
-        userId,
+        ...searchCondition,
       };
 
-      if (search) {
-        whereCondition.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-        ];
+      if (!isAdmin) {
+        whereCondition.userId = userId;
       }
 
-      let templates = await this.prisma.template.findMany({
+      const templates = await this.prisma.template.findMany({
         where: whereCondition,
         include: {
           Question: true,
         },
       });
+
       return templates;
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      throw error;
     }
   }
 
@@ -177,7 +211,7 @@ export class TemplateService {
 
     const ex = await this.prisma.template.findUnique({
       where: { id },
-      include: { Question: true },
+      include: { Question: { include: { Options: true } } },
     });
     if (!ex) throw new HttpException('Template not found', 404);
 
@@ -193,20 +227,39 @@ export class TemplateService {
 
     const qUpd = qs
       .filter((q) => q.id)
-      .map((q) => ({
-        where: { id: q.id },
-        data: {
-          title: q.title,
-          sequence: q.sequence,
-          description: q.description ?? '',
-          type: q.type,
-          isPublished: q.isPublished,
-          Options: {
-            deleteMany: {},
-            create: q.Options?.map((o) => ({ title: o.title })) ?? [],
+      .map((q) => {
+        const optionIdsFromClient =
+          q.Options?.filter((o) => o.id)?.map((o) => o.id) ?? [];
+
+        return {
+          where: { id: q.id },
+          data: {
+            title: q.title,
+            sequence: q.sequence,
+            description: q.description ?? '',
+            type: q.type,
+            isPublished: q.isPublished,
+            Options: {
+              deleteMany: {
+                id: {
+                  notIn: optionIdsFromClient,
+                },
+              },
+              updateMany:
+                q.Options?.filter((o) => o.id).map((o) => ({
+                  where: { id: o.id },
+                  data: { title: o.title },
+                })) ?? [],
+              createMany: {
+                data:
+                  q.Options?.filter((o) => !o.id).map((o) => ({
+                    title: o.title,
+                  })) ?? [],
+              },
+            },
           },
-        },
-      }));
+        };
+      });
 
     const qNew = qs
       .filter((q) => !q.id)
@@ -216,7 +269,11 @@ export class TemplateService {
         description: q.description ?? '',
         type: q.type,
         isPublished: q.isPublished,
-        Options: { create: q.Options?.map((o) => ({ title: o.title })) ?? [] },
+        Options: {
+          create: q.Options?.map((o) => ({
+            title: o.title,
+          })) ?? [],
+        },
       }));
 
     const ids = [
@@ -229,7 +286,10 @@ export class TemplateService {
 
     const data: Prisma.TemplateUpdateInput = {
       ...tpl,
-      Question: { update: qUpd, create: qNew },
+      Question: {
+        update: qUpd,
+        create: qNew,
+      },
       TemplateAccess:
         tpl.type === 'PRIVATE'
           ? {
@@ -248,7 +308,11 @@ export class TemplateService {
       include: {
         Question: { include: { Options: true } },
         TemplateAccess: {
-          select: { user: { select: { id: true, username: true } } },
+          select: {
+            user: {
+              select: { id: true, username: true },
+            },
+          },
         },
       },
     });
@@ -257,9 +321,14 @@ export class TemplateService {
       id: a.user.id,
       username: a.user.username,
     }));
+
     const { TemplateAccess, ...rest } = updated;
-    return { ...rest, TemplateAccess: allowed };
+    return {
+      ...rest,
+      TemplateAccess: allowed,
+    };
   }
+
 
   async remove(templateIds: string[]) {
     try {

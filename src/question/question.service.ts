@@ -3,7 +3,7 @@ import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Request } from 'express';
-import { ROLE } from '@prisma/client';
+import { QUESTION_ANSWER_TYPE, ROLE } from '@prisma/client';
 
 @Injectable()
 export class QuestionService {
@@ -88,6 +88,16 @@ export class QuestionService {
       return question
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  async getTemplateQuestions(templateId: string) {
+    try {
+      let questions = await this.prisma.question.findMany({ where: { templateId, isPublished: true } })
+      return questions
+    } catch (error) {
+      console.log(error);
+
     }
   }
 

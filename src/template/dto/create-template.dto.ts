@@ -48,4 +48,9 @@ export class CreateTemplateDto {
   @Type(() => AllowedUserDto)
   @IsOptional()
   allowedUsers?: AllowedUserDto[]
+
+
+  @IsArray()
+  @IsString({ each: true })
+  tagIds: string[];
 }

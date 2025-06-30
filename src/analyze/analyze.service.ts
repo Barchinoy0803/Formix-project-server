@@ -9,9 +9,9 @@ type AnswerWithRelations = Answer & {
 
 @Injectable()
 export class AnalyzeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async findQuestionForAnalyze(id: string) {
+  async findAnalyzeForQuestion(id: string) {
     try {
       const question = await this.prisma.question.findUnique({ where: { id } });
       if (!question) return null;
@@ -29,16 +29,16 @@ export class AnalyzeService {
 
       switch (question.type) {
         case QUESTION_ANSWER_TYPE.OPEN:
+          return { answers, questionType: question.type }
         case QUESTION_ANSWER_TYPE.NUMERICAL:
-          return answers;
+          return { answers, questionType: question.type };
 
         case QUESTION_ANSWER_TYPE.CLOSE: {
           const yesCount = answers.filter(a => a.answer === 'YES').length;
           const total = answers.length || 1;
           const yesPercent = Number(((yesCount / total) * 100).toFixed(1));
-          return { YES: yesPercent, NO: 100 - yesPercent, answers };
+          return { YES: yesPercent, NO: 100 - yesPercent, answers, questionType: question.type };
         }
-
         case QUESTION_ANSWER_TYPE.MULTICHOICE: {
           const counter = new Map<string, { title: string; count: number }>();
 
@@ -65,7 +65,7 @@ export class AnalyzeService {
             }))
             .sort((a, b) => b.count - a.count);
 
-          return { totalSelections, stats, answers };
+          return { totalSelections, stats, answers, questionType: question.type };
         }
       }
     } catch (error) {
