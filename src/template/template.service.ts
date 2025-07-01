@@ -14,55 +14,55 @@ import { FORM_TYPE, Prisma, ROLE } from '@prisma/client';
 export class TemplateService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async create(createTemplateDto: CreateTemplateDto, req: Request) {
+   async create(createTemplateDto: CreateTemplateDto, req: Request) {
     try {
       const userId = req['user'].id;
-      const { Question, allowedUsers, ...templateData } = createTemplateDto;
+      console.log(userId)
+      const {
+        Question,
+        allowedUsers,
+        tagIds,          
+        ...templateData  
+      } = createTemplateDto;
 
       const template = await this.prisma.template.create({
         data: {
           ...templateData,
           userId,
-          ...(createTemplateDto.tagIds?.length
-            ? {
-              tags: {
-                connect: createTemplateDto.tagIds.map((id) => ({ id })),
-              },
-            }
-            : {}),
-          ...(Question?.length
-            ? {
-              Question: {
-                create: Question.map((q) => ({
-                  title: q.title,
-                  sequence: q.sequence,
-                  description: q.description ?? '',
-                  type: q.type,
-                  isPublished: q.isPublished,
-                  createdById: userId,
-                  Options: {
-                    create: q.Options?.map((o) => ({ title: o.title })) ?? [],
-                  },
-                })),
-              },
-            }
-            : {}),
-          ...(templateData.type === 'PRIVATE' && allowedUsers?.length
-            ? {
-              TemplateAccess: {
-                create: allowedUsers.map((user) => ({
-                  userId: user.id,
-                })),
-              },
-            }
-            : {}),
+
+          ...(tagIds?.length && {
+            tags: {
+              connect: tagIds.map((id) => ({ id })),
+            },
+          }),
+
+          ...(Question?.length && {
+            Question: {
+              create: Question.map((q) => ({
+                title: q.title,
+                sequence: q.sequence,
+                description: q.description ?? '',
+                type: q.type,
+                isPublished: q.isPublished,
+                createdById: userId,
+                Options: {
+                  create: q.Options?.map((o) => ({ title: o.title })) ?? [],
+                },
+              })),
+            },
+          }),
+
+          ...(templateData.type === 'PRIVATE' && allowedUsers?.length && {
+            TemplateAccess: {
+              create: allowedUsers.map((u) => ({ userId: u.id })),
+            },
+          }),
         },
+
         include: {
-          Question: {
-            include: { Options: true },
-          },
+          Question: { include: { Options: true } },
           TemplateAccess: true,
-          tags: true
+          tags: true,
         },
       });
 
