@@ -13,9 +13,10 @@ import { FileUploadModule } from './file-upload/file-upload.module';
 import { CloudinaryModule } from 'nestjs-cloudinary';
 import { OptionsModule } from './options/options.module';
 import { AnalyzeModule } from './analyze/analyze.module';
+import { TagModule } from './tag/tag.module';
 
 @Module({
-  imports: [UserModule, FormModule, QuestionModule, AnswerModule, PrismaModule, UserAuthModule, MailModule, TemplateModule, FileUploadModule, AnalyzeModule,
+  imports: [UserModule, FormModule, QuestionModule, AnswerModule, PrismaModule, UserAuthModule, MailModule, TemplateModule, FileUploadModule, AnalyzeModule, TagModule,
       CloudinaryModule.forRootAsync({
       useFactory: () => ({
         cloud_name: process.env.CLOUD_NAME,
