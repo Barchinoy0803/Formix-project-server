@@ -31,9 +31,8 @@ export class TagController {
     return this.tagService.update(id, updateTagDto);
   }
 
-  @Delete()
-  remove(@Body('ids') ids: string | string[]) {
-    const idArray = typeof ids === 'string' ? ids.split(',') : ids;
-    return this.tagService.remove(idArray);
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.tagService.remove(id);
   }
 }

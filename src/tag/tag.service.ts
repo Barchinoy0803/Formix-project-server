@@ -47,22 +47,15 @@ export class TagService {
     }
   }
 
-  async remove(tagIds: string[]) {
+  async remove(id: string) {
     try {
-      if (!tagIds || tagIds.length === 0) {
-        throw new BadRequestException('No tag IDs provided');
-      }
-
-      await this.prisma.tags.deleteMany({
-        where: {
-          id: { in: tagIds },
-        },
+      await this.prisma.tags.delete({
+        where: { id },
       });
 
-      return { message: 'Tags successfully deleted', deletedIds: tagIds };
+      return { message: 'Successfully deleted', deletedId: id };
     } catch (error) {
-      console.error('Failed to delete tags:', error);
-      throw new InternalServerErrorException('Failed to delete tags');
+      throw new InternalServerErrorException(error);
     }
   }
 
