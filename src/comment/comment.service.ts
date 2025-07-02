@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { Comment } from '@prisma/client';
@@ -10,46 +10,43 @@ export class CommentService {
 
   async createComment(dto: CreateCommentDto, userId: string): Promise<Comment> {
     try {
-      return await this.prisma.comment.create({ data: { ...dto, userId } });
-    } catch (e) {
+      console.log(dto, userId)
+      return await this.prisma.comment.create({
+        data: {
+          context: dto.context,
+          user:     { connect: { id: userId } },
+          template: { connect: { id: dto.templateId } },
+        },
+        include: { user: true },
+      });
+    } catch (err) {
+      console.log(err)
       throw new InternalServerErrorException('Failed to create comment');
     }
   }
 
-  async findAll(templateId: string): Promise<Comment[]> {
-    try {
-      return await this.prisma.comment.findMany({
-        where: { templateId },
-      });
-    } catch (e) {
-      throw new InternalServerErrorException('Failed to fetch comments');
-    }
+  async findAllByTemplate(templateId: string): Promise<Comment[]> {
+    return this.prisma.comment.findMany({
+      where: { templateId },
+      include: { user: true },
+    });
   }
 
   async findOne(id: string): Promise<Comment> {
-    try {
-      const comment = await this.prisma.comment.findUnique({ where: { id } });
-      if (!comment) throw new NotFoundException('Comment not found');
-      return comment;
-    } catch (e) {
-      if (e instanceof NotFoundException) throw e;
-      throw new InternalServerErrorException('Failed to fetch comment');
-    }
+    const comment = await this.prisma.comment.findUnique({ where: { id } });
+    if (!comment) throw new NotFoundException('Comment not found');
+    return comment;
   }
 
   async updateComment(id: string, dto: UpdateCommentDto): Promise<Comment> {
-    try {
-      return await this.prisma.comment.update({ where: { id }, data: dto });
-    } catch {
-      throw new InternalServerErrorException('Failed to update comment');
-    }
+    return this.prisma.comment.update({
+      where: { id },
+      data:  dto,
+      include: { user: true },
+    });
   }
 
   async deleteComment(id: string): Promise<Comment> {
-    try {
-      return await this.prisma.comment.delete({ where: { id } });
-    } catch {
-      throw new InternalServerErrorException('Failed to delete comment');
-    }
+    return this.prisma.comment.delete({ where: { id } });
   }
 }

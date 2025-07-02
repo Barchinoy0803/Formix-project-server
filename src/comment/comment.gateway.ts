@@ -1,29 +1,25 @@
 import {
   WebSocketGateway,
+  WebSocketServer,
   SubscribeMessage,
   MessageBody,
-  WebSocketServer,
   ConnectedSocket,
-  OnGatewayInit,
+  WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { UseGuards } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { WsJwtGuard } from '../guards/ws-jwt.guard';
 
-@WebSocketGateway({ cors: { origin: '*' } })
-export class CommentGateway implements OnGatewayInit {
+@WebSocketGateway({ cors: { origin: '*' }, namespace: '/comments' })
+@UseGuards(WsJwtGuard)
+export class CommentGateway {
   constructor(private readonly commentService: CommentService) {}
 
   @WebSocketServer()
-  server: Server;
-
-  afterInit(server: Server) {
-    server.use((socket, next) => {
-      socket.data.user = { id: socket.id };
-      next();
-    });
-  }
+  server!: Server;
 
   @SubscribeMessage('comment:new')
   async handleNewComment(
@@ -31,58 +27,48 @@ export class CommentGateway implements OnGatewayInit {
     @ConnectedSocket() client: Socket,
   ) {
     const user = client.data.user;
-    if (!user?.id) {
-      client.emit('comment:error', { message: 'Unauthorized user' });
-      return;
-    }
     const comment = await this.commentService.createComment(dto, user.id);
-    this.server.emit('comment:new', comment);
+    console.log(comment)
+    client.join(dto.templateId);
+    this.server.to(dto.templateId).emit('comment:new', comment);
   }
 
   @SubscribeMessage('comment:getAll')
   async handleGetAllComments(
-    @MessageBody() data: { templateId: string },
+    @MessageBody() templateId: string,
     @ConnectedSocket() client: Socket,
   ) {
-    const comments = await this.commentService.findAll(data.templateId);
+    if (!templateId) throw new WsException('templateId required');
+    const comments = await this.commentService.findAllByTemplate(templateId);
+    client.join(templateId);
     client.emit('comment:getAll', comments);
   }
 
   @SubscribeMessage('comment:update')
   async handleUpdateComment(
-    @MessageBody() data: { id: string; updateData: UpdateCommentDto },
+    @MessageBody()
+    data: { id: string; updateData: UpdateCommentDto; templateId: string },
     @ConnectedSocket() client: Socket,
   ) {
     const user = client.data.user;
-    if (!user?.id) {
-      client.emit('comment:error', { message: 'Unauthorized user' });
-      return;
-    }
     const existing = await this.commentService.findOne(data.id);
-    if (existing.userId !== user.id) {
-      client.emit('comment:error', { message: 'You cannot update this comment' });
-      return;
-    }
-    const updated = await this.commentService.updateComment(data.id, data.updateData);
-    this.server.emit('comment:updated', updated);
+    if (existing.userId !== user.id) throw new WsException('Forbidden');
+    const updated = await this.commentService.updateComment(
+      data.id,
+      data.updateData,
+    );
+    this.server.to(data.templateId).emit('comment:updated', updated);
   }
 
   @SubscribeMessage('comment:delete')
   async handleDeleteComment(
-    @MessageBody() data: { id: string },
+    @MessageBody() data: { id: string; templateId: string },
     @ConnectedSocket() client: Socket,
   ) {
     const user = client.data.user;
-    if (!user?.id) {
-      client.emit('comment:error', { message: 'Unauthorized user' });
-      return;
-    }
     const existing = await this.commentService.findOne(data.id);
-    if (existing.userId !== user.id) {
-      client.emit('comment:error', { message: 'You cannot delete this comment' });
-      return;
-    }
+    if (existing.userId !== user.id) throw new WsException('Forbidden');
     await this.commentService.deleteComment(data.id);
-    this.server.emit('comment:deleted', { id: data.id });
+    this.server.to(data.templateId).emit('comment:deleted', { id: data.id });
   }
 }
