@@ -14,15 +14,14 @@ import { FORM_TYPE, Prisma, ROLE } from '@prisma/client';
 export class TemplateService {
   constructor(private readonly prisma: PrismaService) { }
 
-   async create(createTemplateDto: CreateTemplateDto, req: Request) {
+  async create(createTemplateDto: CreateTemplateDto, req: Request) {
     try {
       const userId = req['user'].id;
-      console.log(userId)
       const {
         Question,
         allowedUsers,
-        tagIds,          
-        ...templateData  
+        tagIds,
+        ...templateData
       } = createTemplateDto;
 
       const template = await this.prisma.template.create({
@@ -206,6 +205,7 @@ export class TemplateService {
       Question: qs = [],
       allowedUsers,
       TemplateAccess: tAcc,
+      tagIds = [], 
       ...tpl
     } = dto as any;
 
@@ -300,6 +300,11 @@ export class TemplateService {
             },
           }
           : { deleteMany: {} },
+      ...(Array.isArray(tagIds) && {
+        tags: {
+          set: tagIds.map((id) => ({ id })),
+        },
+      }),
     };
 
     const updated = await this.prisma.template.update({
@@ -314,6 +319,7 @@ export class TemplateService {
             },
           },
         },
+        tags: true,
       },
     });
 
@@ -328,6 +334,7 @@ export class TemplateService {
       TemplateAccess: allowed,
     };
   }
+
 
 
   async remove(templateIds: string[]) {
