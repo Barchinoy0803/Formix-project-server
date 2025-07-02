@@ -177,6 +177,7 @@ export class TemplateService {
         where: { id },
         include: {
           Question: { include: { Options: true } },
+          tags: { select: { id: true } },
           TemplateAccess: {
             select: {
               user: { select: { id: true, username: true } },
@@ -193,7 +194,8 @@ export class TemplateService {
       }));
 
       const { TemplateAccess: _, ...rest } = template;
-      return { ...rest, TemplateAccess: allowedUsers };
+      const tags = template.tags?.map((tag) => tag.id)
+      return { ...rest, TemplateAccess: allowedUsers, tags };
     } catch (err) {
       console.error(err);
       throw err;
@@ -205,7 +207,7 @@ export class TemplateService {
       Question: qs = [],
       allowedUsers,
       TemplateAccess: tAcc,
-      tagIds = [], 
+      tagIds = [],
       ...tpl
     } = dto as any;
 

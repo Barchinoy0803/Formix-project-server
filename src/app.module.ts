@@ -14,9 +14,13 @@ import { CloudinaryModule } from 'nestjs-cloudinary';
 import { OptionsModule } from './options/options.module';
 import { AnalyzeModule } from './analyze/analyze.module';
 import { TagModule } from './tag/tag.module';
+import { CommentModule } from './comment/commen.module';
+import { LikeModule } from './likes/likes.module';
 
 @Module({
-  imports: [UserModule, FormModule, QuestionModule, AnswerModule, PrismaModule, UserAuthModule, MailModule, TemplateModule, FileUploadModule, AnalyzeModule, TagModule,
+  imports: [UserModule, FormModule, QuestionModule, AnswerModule, PrismaModule,
+    UserAuthModule, MailModule, TemplateModule, FileUploadModule,
+    AnalyzeModule, TagModule, CommentModule, LikeModule,
       CloudinaryModule.forRootAsync({
       useFactory: () => ({
         cloud_name: process.env.CLOUD_NAME,
@@ -24,9 +28,9 @@ import { TagModule } from './tag/tag.module';
         api_secret: process.env.API_SECRET,
       }),
     }),
-      OptionsModule,
+    OptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
