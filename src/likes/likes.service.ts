@@ -4,33 +4,53 @@ import { CreateLikeDto } from "./dto/create-like.dto";
 
 @Injectable()
 export class LikeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async create(createLikeDto: CreateLikeDto, userId:any) {
+  async create(createLikeDto: CreateLikeDto, context: { userId: string }) {
     try {
-      let exsitingLike = await this.prisma.likes.findFirst({ where: { templateId: createLikeDto.templateId, userId } })
-      if (!exsitingLike) {
-        let likes = await this.prisma.likes.create({
-          data: { templateId: createLikeDto.templateId, userId }
-        })
-        return { likes, message: 'Liked👍🏻' }
+      const existingLike = await this.prisma.likes.findFirst({ 
+        where: { 
+          templateId: createLikeDto.templateId, 
+          userId: context.userId 
+        } 
+      });
+      
+      if (!existingLike) {
+        const likes = await this.prisma.likes.create({
+          data: { 
+            templateId: createLikeDto.templateId, 
+            userId: context.userId 
+          }
+        });
+        return { likes, message: 'Liked👍🏻' };
       } else {
-        await this.prisma.likes.delete({ where: { id: exsitingLike.id } })
-        return { message: 'Unliked👎🏻' }
+        await this.prisma.likes.delete({ where: { id: existingLike.id } });
+        return { message: 'Unliked👎🏻' };
       }
     } catch (error) {
-      return new BadRequestException(error)
+      console.error('Error in like service:', error);
+      throw new BadRequestException('Failed to toggle like');
     }
   }
 
-  async findAll() {
+  async findAllTemplateLikes(templateId: string) {
     try {
-      let likes = await this.prisma.likes.findMany()
-      if (!likes.length) return new HttpException("Not found!", HttpStatus.NOT_FOUND)
-      return likes
+      const likes = await this.prisma.likes.findMany({ 
+        where: { templateId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true
+            }
+          }
+        }
+      });
+      
+      return { likes, count: likes.length };
     } catch (error) {
-      return new BadRequestException(error)
+      console.error('Error fetching likes:', error);
+      throw new BadRequestException('Failed to fetch likes');
     }
   }
-
 }

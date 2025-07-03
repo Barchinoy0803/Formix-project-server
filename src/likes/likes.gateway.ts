@@ -46,7 +46,7 @@ export class LikeGateway {
     @SubscribeMessage('like:getAll')
     async handleGetAllLikes(@ConnectedSocket() client: Socket) {
         try {
-            const likes = await this.likeService.findAll();
+            const likes = await this.likeService.findAllTemplateLikes();
             client.emit('like:getAll', likes);
         } catch (error) {
             console.error(error);
