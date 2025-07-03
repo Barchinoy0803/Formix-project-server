@@ -20,7 +20,6 @@ export class CommentService {
       });
       return comments
     } catch (err) {
-      console.log(err)
       throw new InternalServerErrorException('Failed to create comment');
     }
   }
@@ -42,7 +41,6 @@ export class CommentService {
       if (!comment) throw new NotFoundException('Comment not found');
       return comment;
     } catch (error) {
-      console.log(error);
       throw new IntrinsicException(error)
     }
   }

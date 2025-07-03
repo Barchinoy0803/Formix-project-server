@@ -39,7 +39,6 @@ export class CommentGateway {
   ) {
     if (!templateId) throw new WsException('templateId required');
     const comments = await this.commentService.findAllByTemplate(templateId);
-    console.log(comments);
 
     client.join(templateId);
     client.emit('comment:getAll', comments);
