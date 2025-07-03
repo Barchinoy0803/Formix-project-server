@@ -16,7 +16,7 @@ import { WsJwtGuard } from '../guards/ws-jwt.guard';
 @WebSocketGateway({ cors: { origin: '*' }, namespace: '/comments' })
 @UseGuards(WsJwtGuard)
 export class CommentGateway {
-  constructor(private readonly commentService: CommentService) {}
+  constructor(private readonly commentService: CommentService) { }
 
   @WebSocketServer()
   server!: Server;
@@ -28,7 +28,6 @@ export class CommentGateway {
   ) {
     const user = client.data.user;
     const comment = await this.commentService.createComment(dto, user.id);
-    console.log(comment)
     client.join(dto.templateId);
     this.server.to(dto.templateId).emit('comment:new', comment);
   }
@@ -40,6 +39,8 @@ export class CommentGateway {
   ) {
     if (!templateId) throw new WsException('templateId required');
     const comments = await this.commentService.findAllByTemplate(templateId);
+    console.log(comments);
+
     client.join(templateId);
     client.emit('comment:getAll', comments);
   }
@@ -69,6 +70,7 @@ export class CommentGateway {
     const existing = await this.commentService.findOne(data.id);
     if (existing.userId !== user.id) throw new WsException('Forbidden');
     await this.commentService.deleteComment(data.id);
-    this.server.to(data.templateId).emit('comment:deleted', { id: data.id });
+    client.join(data.templateId);
+    this.server.to(data.templateId).emit('comment:delete', data.id, data.templateId);
   }
 }
