@@ -13,16 +13,16 @@ export class OptionsService {
       let option = await this.prisma.options.create({ data: createOptionDto })
       return option
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
-  
+
   async findAll() {
     try {
       let options = await this.prisma.options.findMany()
       return options
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -31,7 +31,7 @@ export class OptionsService {
       await this.prisma.options.delete({ where: { id } })
       return { message: "Deleted successfully" }
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 }

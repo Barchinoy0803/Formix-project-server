@@ -51,13 +51,14 @@ export class CommentGateway {
     @ConnectedSocket() client: Socket,
   ) {
     const user = client.data.user;
+    
     const existing = await this.commentService.findOne(data.id);
     if (existing.userId !== user.id) throw new WsException('Forbidden');
     const updated = await this.commentService.updateComment(
       data.id,
       data.updateData,
     );
-    this.server.to(data.templateId).emit('comment:updated', updated);
+    this.server.to(data.templateId).emit('comment:update', updated);
   }
 
   @SubscribeMessage('comment:delete')

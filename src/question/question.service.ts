@@ -45,7 +45,6 @@ export class QuestionService {
 
       return createdQuestions;
     } catch (error) {
-      console.error(error);
       throw new HttpException('Failed to create questions', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -75,7 +74,7 @@ export class QuestionService {
       )
       return questions
     } catch (error) {
-      console.log(error);
+      throw error
     }
   }
 
@@ -87,7 +86,7 @@ export class QuestionService {
       }
       return question
     } catch (error) {
-      console.log(error);
+      throw error
     }
   }
 
@@ -96,8 +95,7 @@ export class QuestionService {
       let questions = await this.prisma.question.findMany({ where: { templateId, isPublished: true } })
       return questions
     } catch (error) {
-      console.log(error);
-
+      throw error
     }
   }
 
@@ -129,12 +127,9 @@ export class QuestionService {
 
       return updated;
     } catch (error) {
-      console.error(error);
       throw new Error("Update failed");
     }
   }
-
-
 
   async remove(ids: string[]) {
     try {
@@ -158,7 +153,7 @@ export class QuestionService {
         return { message: `${deleted.count} question(s) successfully deleted!` };
       }
     } catch (error) {
-      console.log(error);
+      throw error
     }
   }
 }

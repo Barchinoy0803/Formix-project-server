@@ -15,8 +15,6 @@ export class SelfGuard implements CanActivate {
         const ownerId = req['user'].id;
 
         if (!userIds || !ownerId) return false;
-        console.log(userIds, ownerId);
-        
 
         const idArray = typeof userIds === 'string' ? userIds.split(',') : userIds;
 

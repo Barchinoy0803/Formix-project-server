@@ -12,7 +12,7 @@ export class UserService {
       let users = await this.prisma.user.findMany()
       return users
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -22,7 +22,7 @@ export class UserService {
       if (!user) throw new NotFoundException("Not found this user!")
       return user
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -34,7 +34,7 @@ export class UserService {
       })
       return updatedUser
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -60,7 +60,7 @@ export class UserService {
         return { message: `${deleted.count} user(s) successfully deleted!` };
       }
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -88,7 +88,7 @@ export class UserService {
         }
       }
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -114,7 +114,7 @@ export class UserService {
         }
       }
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 }

@@ -32,7 +32,7 @@ model Template {
   image          String?
   type           FORM_TYPE
   userId         String
-  user           User             @relation(fields: [userId], references: [id])
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   tags           Tags[]           @relation("TemplateTags")
   Question       Question[]
   Comment        Comment[]
@@ -50,9 +50,9 @@ model Tags {
 model TemplateAccess {
   id         String   @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   templateId String
-  template   Template @relation(fields: [templateId], references: [id])
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   @@unique([templateId, userId])
 }
@@ -60,9 +60,9 @@ model TemplateAccess {
 model Form {
   id         String   @id @default(uuid())
   templateId String
-  template   Template @relation(fields: [templateId], references: [id])
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
   userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   answer     Answer[]
   createdAt  DateTime @default(now())
 }
@@ -75,9 +75,9 @@ model Question {
   type        QUESTION_ANSWER_TYPE
   isPublished Boolean
   templateId  String
-  template    Template             @relation(fields: [templateId], references: [id])
+  template    Template             @relation(fields: [templateId], references: [id], onDelete: Cascade)
   createdById String?
-  createdBy   User?                @relation(fields: [createdById], references: [id])
+  createdBy   User?                @relation(fields: [createdById], references: [id], onDelete: Cascade)
   Answer      Answer[]
   Options     Options[]
 }
@@ -87,9 +87,9 @@ model Answer {
   sequence               Int
   answer                 String
   questionId             String
-  question               Question                 @relation(fields: [questionId], references: [id])
+  question               Question                 @relation(fields: [questionId], references: [id], onDelete: Cascade)
   userId                 String?
-  user                   User?                    @relation(fields: [userId], references: [id])
+  user                   User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   formId                 String
   form                   Form                     @relation(fields: [formId], references: [id], onDelete: Cascade)
   selectedOptions        Options[]                @relation("AnswerOptions")
@@ -110,7 +110,7 @@ model SelectedOptionOnAnswer {
   optionId   String
   isSelected Boolean @default(false)
 
-  answer Answer  @relation(fields: [answerId], references: [id])
+  answer Answer  @relation(fields: [answerId], references: [id], onDelete: Cascade)
   option Options @relation(fields: [optionId], references: [id], onDelete: Cascade)
 
   @@id([answerId, optionId])
@@ -120,17 +120,17 @@ model Comment {
   id         String   @id @default(uuid())
   context    String
   userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   templateId String
-  template   Template @relation(fields: [templateId], references: [id])
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }
 
 model Likes {
   id         String   @id @default(uuid())
   userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   templateId String
-  template   Template @relation(fields: [templateId], references: [id])
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }
 
 enum ROLE {

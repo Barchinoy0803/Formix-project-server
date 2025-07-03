@@ -12,7 +12,7 @@ export class TagService {
       const tag = await this.prisma.tags.create({ data: createTagDto })
       return tag
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -21,7 +21,7 @@ export class TagService {
       const tags = await this.prisma.tags.findMany()
       return tags
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -31,7 +31,7 @@ export class TagService {
       if (!tag) return new NotFoundException("Not found this tag")
       return tag
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -43,7 +43,7 @@ export class TagService {
       })
       return updatedTag
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -58,5 +58,4 @@ export class TagService {
       throw new InternalServerErrorException(error);
     }
   }
-
 }
