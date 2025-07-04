@@ -17,6 +17,7 @@ import { WsJwtGuard } from 'src/guards/ws-jwt.guard';
         origin: '*',
     },
 })
+
 export class LikeGateway {
     constructor(private readonly likeService: LikeService) { }
 
@@ -38,7 +39,7 @@ export class LikeGateway {
 
             const result = await this.likeService.create(data, { userId: user.id });
             const updatedLikes = await this.likeService.findAllTemplateLikes(data.templateId);
-            
+
             this.server.emit('like:updated', {
                 templateId: data.templateId,
                 action: result.action,
@@ -47,27 +48,31 @@ export class LikeGateway {
             });
         } catch (error) {
             console.error(error);
-            client.emit('like:error', { 
+            client.emit('like:error', {
                 message: error.message || 'Failed to toggle like',
                 code: error.response?.statusCode || 500
             });
         }
     }
-
     @SubscribeMessage('like:getAll')
     async handleGetAllLikes(
         @MessageBody() data: GetLikesDto,
         @ConnectedSocket() client: Socket
     ) {
         try {
-            const likes = await this.likeService.findAllTemplateLikes(data.templateId);
-            client.emit('like:getAll', likes);
+            const result = await this.likeService.findAllTemplateLikes(data.templateId);
+            client.emit('like:updated', {
+                templateId: data.templateId,
+                action: 'none',
+                count: result.count,
+                likes: result.likes
+            });
         } catch (error) {
-            console.error(error);
-            client.emit('like:error', { 
+            client.emit('like:error', {
                 message: error.message || 'Failed to fetch likes',
                 code: error.response?.statusCode || 500
             });
         }
     }
+
 }
