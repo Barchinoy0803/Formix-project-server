@@ -6,10 +6,13 @@ import {
     WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { CreateLikeDto } from './dto/create-like.dto';
+import { CreateLikeDto, GetLikesDto } from './dto/create-like.dto';
 import { LikeService } from './likes.service';
+import { UnauthorizedException, UseGuards } from '@nestjs/common';
+import { WsJwtGuard } from 'src/guards/ws-jwt.guard';
 
 @WebSocketGateway({
+    namespace: '/likes',
     cors: {
         origin: '*',
     },
@@ -20,6 +23,7 @@ export class LikeGateway {
     @WebSocketServer()
     server: Server;
 
+    @UseGuards(WsJwtGuard)
     @SubscribeMessage('like:toggle')
     async handleLikeToggle(
         @MessageBody() data: CreateLikeDto,
@@ -27,30 +31,43 @@ export class LikeGateway {
     ) {
         try {
             const user = client.data.user;
+            console.log(data)
             if (!user?.id) {
-                client.emit('like:error', { message: 'Unauthorized user' });
-                return;
+                throw new UnauthorizedException('Unauthorized user');
             }
 
             const result = await this.likeService.create(data, { userId: user.id });
+            const updatedLikes = await this.likeService.findAllTemplateLikes(data.templateId);
+            
             this.server.emit('like:updated', {
                 templateId: data.templateId,
-                message: result.message,
+                action: result.action,
+                count: updatedLikes.count,
+                likes: updatedLikes.likes
             });
         } catch (error) {
             console.error(error);
-            client.emit('like:error', { message: 'Failed to toggle like' });
+            client.emit('like:error', { 
+                message: error.message || 'Failed to toggle like',
+                code: error.response?.statusCode || 500
+            });
         }
     }
 
     @SubscribeMessage('like:getAll')
-    async handleGetAllLikes(@ConnectedSocket() client: Socket) {
+    async handleGetAllLikes(
+        @MessageBody() data: GetLikesDto,
+        @ConnectedSocket() client: Socket
+    ) {
         try {
-            const likes = await this.likeService.findAllTemplateLikes();
+            const likes = await this.likeService.findAllTemplateLikes(data.templateId);
             client.emit('like:getAll', likes);
         } catch (error) {
             console.error(error);
-            client.emit('like:error', { message: 'Failed to fetch likes' });
+            client.emit('like:error', { 
+                message: error.message || 'Failed to fetch likes',
+                code: error.response?.statusCode || 500
+            });
         }
     }
 }
