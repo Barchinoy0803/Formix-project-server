@@ -119,7 +119,11 @@ export class TemplateService {
         },
         include: {
           TemplateAccess: true,
+          user: { select: { username: true } }
         },
+        orderBy: {
+          createdAt: 'desc'
+        }
       });
 
       return templates;
@@ -169,6 +173,54 @@ export class TemplateService {
       console.error(error);
       throw error;
     }
+  }
+
+  async getTop5PopularTemplates(req: Request) {
+    const userId = req['user']?.id;
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isAdmin = user?.role === ROLE.ADMIN;
+
+    const accessCondition: any[] = [
+      { type: FORM_TYPE.PUBLIC },
+    ];
+
+    if (userId) {
+      const privateAccess = isAdmin
+        ? {}
+        : {
+          TemplateAccess: {
+            some: {
+              userId,
+            },
+          },
+        };
+
+      accessCondition.push({
+        type: FORM_TYPE.PRIVATE,
+        ...privateAccess,
+      });
+    }
+
+    const templates = await this.prisma.template.findMany({
+      where: {
+        OR: accessCondition,
+      },
+      include: {
+        _count: {
+          select: { Form: true },
+        },
+        user: { select: { username: true } }
+      },
+      orderBy: {
+        Form: {
+          _count: 'desc',
+        },
+      },
+      take: 5,
+    });
+
+    return templates;
   }
 
   async findOne(id: string) {
@@ -336,8 +388,6 @@ export class TemplateService {
       TemplateAccess: allowed,
     };
   }
-
-
 
   async remove(templateIds: string[]) {
     try {

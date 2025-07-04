@@ -27,9 +27,14 @@ export class TemplateController {
   @UseGuards(OptionalAuthGuard)
   @Get()
   findAll(@Req() req: Request, @Query('search') search?: string) {
-    return this.templateService.findAll(req, search); 
+    return this.templateService.findAll(req, search);
   }
 
+  @UseGuards(OptionalAuthGuard)
+  @Get('top')
+  getTop5PopularTemplates(@Req() req: Request) {
+    return this.templateService.getTop5PopularTemplates(req);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
