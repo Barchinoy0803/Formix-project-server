@@ -72,66 +72,70 @@ export class TemplateService {
     }
   }
 
-  async findAll(req: Request, search?: string) {
-    try {
-      const userId = req['user']?.id;
+async findAll(req: Request, search?: string) {
+  try {
+    const userId = req['user']?.id;
+    let isAdmin = false;
 
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      const isAdmin = user?.role === ROLE.ADMIN;
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+      isAdmin = user?.role === ROLE.ADMIN;
+    }
 
-      const searchCondition = search
-        ? {
+    const searchCondition = search
+      ? {
           OR: [
             { title: { contains: search, mode: 'insensitive' } },
             { description: { contains: search, mode: 'insensitive' } },
           ],
         }
-        : {};
+      : {};
 
-      const whereConditions: any[] = [
-        {
-          type: FORM_TYPE.PUBLIC,
-          ...searchCondition,
-        },
-      ];
+    const whereConditions: any[] = [
+      {
+        type: FORM_TYPE.PUBLIC,
+        ...searchCondition,
+      },
+    ];
 
-      if (userId) {
-        const privateTemplateAccess = isAdmin
-          ? {}
-          : {
+    if (userId) {
+      const privateTemplateAccess = isAdmin
+        ? {}
+        : {
             TemplateAccess: {
-              some: {
-                userId,
-              },
+              some: { userId },
             },
           };
 
-        whereConditions.push({
-          type: FORM_TYPE.PRIVATE,
-          ...privateTemplateAccess,
-          ...searchCondition,
-        });
-      }
-
-      const templates = await this.prisma.template.findMany({
-        where: {
-          OR: whereConditions,
-        },
-        include: {
-          TemplateAccess: true,
-          user: { select: { username: true } }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
+      whereConditions.push({
+        type: FORM_TYPE.PRIVATE,
+        ...privateTemplateAccess,
+        ...searchCondition,
       });
-
-      return templates;
-    } catch (error) {
-      console.error(error);
-      throw error;
     }
+
+    const templates = await this.prisma.template.findMany({
+      where: {
+        OR: whereConditions,
+      },
+      include: {
+        TemplateAccess: true,
+        user: { select: { username: true } },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return templates;
+  } catch (error) {
+    console.error(error);
+    throw error;
   }
+}
+
 
   async findAllUserTemplates(req: Request, search?: string) {
     try {
@@ -175,53 +179,53 @@ export class TemplateService {
     }
   }
 
-  async getTop5PopularTemplates(req: Request) {
-    const userId = req['user']?.id;
+async getTop5PopularTemplates(req: Request) {
+  const userId = req['user']?.id;
+  let isAdmin = false;
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    const isAdmin = user?.role === ROLE.ADMIN;
+  if (userId) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    isAdmin = user?.role === ROLE.ADMIN;
+  }
 
-    const accessCondition: any[] = [
-      { type: FORM_TYPE.PUBLIC },
-    ];
+  const accessCondition: any[] = [
+    { type: FORM_TYPE.PUBLIC },
+  ];
 
-    if (userId) {
-      const privateAccess = isAdmin
-        ? {}
-        : {
+  if (userId) {
+    const privateAccess = isAdmin
+      ? {}
+      : {
           TemplateAccess: {
-            some: {
-              userId,
-            },
+            some: { userId },
           },
         };
 
-      accessCondition.push({
-        type: FORM_TYPE.PRIVATE,
-        ...privateAccess,
-      });
-    }
-
-    const templates = await this.prisma.template.findMany({
-      where: {
-        OR: accessCondition,
-      },
-      include: {
-        _count: {
-          select: { Form: true },
-        },
-        user: { select: { username: true } }
-      },
-      orderBy: {
-        Form: {
-          _count: 'desc',
-        },
-      },
-      take: 5,
+    accessCondition.push({
+      type: FORM_TYPE.PRIVATE,
+      ...privateAccess,
     });
-
-    return templates;
   }
+
+  const templates = await this.prisma.template.findMany({
+    where: {
+      OR: accessCondition,
+    },
+    include: {
+      _count: { select: { Form: true } },
+      user: { select: { username: true } },
+    },
+    orderBy: {
+      Form: { _count: 'desc' },
+    },
+    take: 5,
+  });
+
+  return templates;
+}
+
 
   async findOne(id: string) {
     try {
