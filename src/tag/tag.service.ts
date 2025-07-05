@@ -27,7 +27,10 @@ export class TagService {
 
   async findOne(id: string) {
     try {
-      const tag = await this.prisma.tags.findUnique({ where: { id } })
+      const tag = await this.prisma.tags.findUnique({
+        where: { id },
+        include: { templates: true }
+      })
       if (!tag) return new NotFoundException("Not found this tag")
       return tag
     } catch (error) {

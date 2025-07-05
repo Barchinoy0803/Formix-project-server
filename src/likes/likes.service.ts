@@ -45,40 +45,31 @@ export class LikeService {
         }
     }
 
-    async findAllTemplateLikes(templateId: string) {
-        try {
-            if (!templateId) {
-                throw new BadRequestException('Template ID is required');
-            }
+async findAllTemplateLikes(templateId: string) {
+  const templateExists = await this.prisma.template.findFirst({
+    where: { id: templateId },
+    select: { id: true },
+  });
 
-            const template = await this.prisma.template.findUnique({
-                where: { id: templateId }
-            });
-            
-            if (!template) {
-                throw new NotFoundException('Template not found');
-            }
+  if (!templateExists) {
+    return {
+      templateId,
+      likes: [],
+      count: 0,
+      likedByCurrentUser: false,
+    };
+  }
 
-            const likes = await this.prisma.likes.findMany({ 
-                where: { templateId },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            username: true,
-                        }
-                    }
-                }
-            });
-            
-            return { 
-                likes, 
-                count: likes.length,
-                templateId
-            };
-        } catch (error) {
-            console.error('Error fetching likes:', error);
-            throw new BadRequestException(error.message || 'Failed to fetch likes');
-        }
-    }
+  const likes = await this.prisma.likes.findMany({
+    where: { templateId },
+  });
+
+  return {
+    templateId,
+    likes,
+    count: likes.length,
+    likedByCurrentUser: false, 
+  };
+}
+
 }

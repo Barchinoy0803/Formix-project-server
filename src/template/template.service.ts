@@ -21,6 +21,7 @@ export class TemplateService {
         Question,
         allowedUsers,
         tagIds,
+        tags,
         ...templateData
       } = createTemplateDto;
 
@@ -29,11 +30,11 @@ export class TemplateService {
           ...templateData,
           userId,
 
-          ...(tagIds?.length && {
+          ...(tagIds && tagIds.length > 0 ? {
             tags: {
               connect: tagIds.map((id) => ({ id })),
             },
-          }),
+          }: {}),
 
           ...(Question?.length && {
             Question: {
@@ -136,7 +137,6 @@ async findAll(req: Request, search?: string) {
   }
 }
 
-
   async findAllUserTemplates(req: Request, search?: string) {
     try {
       const userId = req['user'].id;
@@ -225,7 +225,6 @@ async getTop5PopularTemplates(req: Request) {
 
   return templates;
 }
-
 
   async findOne(id: string) {
     try {
