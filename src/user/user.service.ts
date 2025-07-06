@@ -9,12 +9,17 @@ export class UserService {
 
   async findAll() {
     try {
-      let users = await this.prisma.user.findMany()
-      return users
+      const users = await this.prisma.user.findMany({
+        orderBy: {
+          username: 'asc',
+        },
+      });
+      return users;
     } catch (error) {
       throw error;
     }
-  }
+}
+
 
   async findOne(id: string) {
     try {

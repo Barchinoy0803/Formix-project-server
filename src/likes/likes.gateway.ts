@@ -32,7 +32,6 @@ export class LikeGateway {
     ) {
         try {
             const user = client.data.user;
-            console.log(data)
             if (!user?.id) {
                 throw new UnauthorizedException('Unauthorized user');
             }
