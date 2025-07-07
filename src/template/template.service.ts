@@ -232,7 +232,7 @@ async getTop5PopularTemplates(req: Request) {
         where: { id },
         include: {
           Question: { include: { Options: true } },
-          tags: { select: { id: true } },
+          tags: { select: { id: true, name: true } },
           TemplateAccess: {
             select: {
               user: { select: { id: true, username: true } },
@@ -249,8 +249,8 @@ async getTop5PopularTemplates(req: Request) {
       }));
 
       const { TemplateAccess: _, ...rest } = template;
-      const tags = template.tags?.map((tag) => tag.id)
-      return { ...rest, TemplateAccess: allowedUsers, tags };
+      // const tags = template.tags?.map((tag) => tag.id)
+      return { ...rest, TemplateAccess: allowedUsers };
     } catch (err) {
       console.error(err);
       throw err;
