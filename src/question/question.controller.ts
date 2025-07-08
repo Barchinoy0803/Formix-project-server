@@ -43,12 +43,12 @@ export class QuestionController {
     return this.questionService.findAll(user);
   }
 
-  @Get('template/:id')
+  @Get('/:id')
   findOne(@Param('id') id: string) {
     return this.questionService.findOne(id);
   }
 
-  @Get(':templateId')
+  @Get('template/:templateId')
   findTemplateQuestions(@Param('templateId') templateId: string) {
     return this.questionService.getTemplateQuestions(templateId);
   }
