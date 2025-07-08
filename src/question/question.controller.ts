@@ -43,7 +43,7 @@ export class QuestionController {
     return this.questionService.findAll(user);
   }
 
-  @Get(':id')
+  @Get('template/:id')
   findOne(@Param('id') id: string) {
     return this.questionService.findOne(id);
   }
