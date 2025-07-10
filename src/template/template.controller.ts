@@ -24,6 +24,11 @@ export class TemplateController {
     return this.templateService.findAllUserTemplates(req, search);
   }
 
+  @Get('token/:token')
+  findUserTemplatesByToken(@Param('token') token: string) {
+    return this.templateService.getUserTemplatesByToken(token);
+  }
+
   @UseGuards(OptionalAuthGuard)
   @Get()
   findAll(@Req() req: Request, @Query('search') search?: string) {

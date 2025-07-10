@@ -179,6 +179,23 @@ export class TemplateService {
     }
   }
 
+  async getUserTemplatesByToken(token: string) {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { apiToken: token } })
+      if (user) {
+        const templates = await this.prisma.template.findMany({
+          where: { userId: user.id },
+          include: {
+            Question: true,
+          },
+        });
+        return templates;
+      }
+    } catch (error) {
+
+    }
+  }
+
   async getTop5PopularTemplates(req: Request) {
     const userId = req['user']?.id;
     let isAdmin = false;
