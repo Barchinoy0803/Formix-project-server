@@ -6,6 +6,7 @@ import * as bcrypt from "bcrypt"
 import { MailService } from '../mail/mail.service';
 import { JwtService } from '@nestjs/jwt';
 import { User, USER_STATUS } from '@prisma/client';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class UserAuthService {
@@ -36,11 +37,14 @@ export class UserAuthService {
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
+      const token = randomBytes(32).toString('hex')
+
       const newUser = await this.prisma.user.create({
         data: {
           ...rest,
           email,
           password: hashedPassword,
+          apiToken: token
         },
       });
 
@@ -54,6 +58,40 @@ export class UserAuthService {
         throw error;
       }
       throw new InternalServerErrorException('Something went wrong');
+    }
+  }
+
+  async getToken(req: Request) {
+    try {
+      const id = req['user'].id
+      const user = await this.prisma.user.findUnique({ where: { id }, select: { apiToken: true } })
+
+      if (!user || !user.apiToken) {
+        throw new NotFoundException('API token not found');
+      }
+
+      return { token: user.apiToken }
+    } catch (error) {
+      console.error('Error getting API token:', error);
+      throw new InternalServerErrorException('Error getting API token');
+    }
+  }
+
+  async me(req: Request) {
+    try {
+      const id = req['user'].id;
+      const user = await this.prisma.user.findUnique({ where: { id }})
+
+      if (!user) {
+        throw new NotFoundException('User token not found');
+      }
+
+      const { password: _, ...userWithoutPassword } = user;
+
+      return userWithoutPassword;
+    } catch (error) {
+      console.error('Error getting me:', error);
+      throw new InternalServerErrorException('Error getting API token');
     }
   }
 
