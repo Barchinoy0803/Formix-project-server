@@ -186,7 +186,18 @@ export class TemplateService {
         const templates = await this.prisma.template.findMany({
           where: { userId: user.id },
           include: {
-            Question: true,
+            Question:
+            {
+              select:
+              {
+                sequence: true,
+                title: true,
+                description: true,
+                type: true,
+                isPublished: true,
+                Answer: true
+              }
+            },
           },
         });
         return templates;
