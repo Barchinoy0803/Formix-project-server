@@ -15,7 +15,7 @@ export class AnalyzeService {
     try {
       const question = await this.prisma.question.findUnique({ where: { id } });
       if (!question) return null;
-
+      
       const answers = (await this.prisma.answer.findMany({
         where: { questionId: id },
         include: {
@@ -64,7 +64,7 @@ export class AnalyzeService {
               ),
             }))
             .sort((a, b) => b.count - a.count);
-
+          
           return { totalSelections, stats, answers, questionType: question.type };
         }
       }
