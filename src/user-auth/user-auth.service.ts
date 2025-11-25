@@ -24,7 +24,7 @@ export class UserAuthService {
       throw error;
     }
   }
-
+   
   async register(createUserAuthDto: CreateUserAuthDto): Promise<Omit<User, 'password' | 'role' | 'status'>> {
     try {
       const { email, password, ...rest } = createUserAuthDto;
